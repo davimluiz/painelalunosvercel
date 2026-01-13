@@ -29,8 +29,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [error, setError] = useState<string | null>(null);
   const [syncSource, setSyncSource] = useState<string | null>(null);
 
-  const processData = (jsonData: any[][]) => {
+  const processExcelData = (jsonData: any[][]) => {
     if (!jsonData || jsonData.length < 2) return [];
+    
+    // Normalização dos cabeçalhos para encontrar as colunas independente da ordem
     const headers = jsonData[0].map(h => String(h || '').toLowerCase().trim().replace(/^["']|["']$/g, ''));
     
     const idx = {
@@ -43,6 +45,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fim: headers.findIndex(h => h.includes('fim'))
     };
 
+    // Validação mínima: Data e Horário de Início são obrigatórios
     if (idx.data === -1 || idx.inicio === -1) return [];
 
     return jsonData.slice(1).map(v => {
@@ -66,23 +69,26 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     try {
       const fileName = 'aulas.xlsx';
+      // Busca apenas o arquivo .xlsx
       const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
       
       if (!res.ok) {
-        throw new Error(`Arquivo ${fileName} não encontrado na pasta /csv/ do servidor.`);
+        throw new Error(`O arquivo ${fileName} não foi encontrado na pasta /csv/. Certifique-se de que ele existe no repositório.`);
       }
 
+      // Previne leitura de erro 404 que retorna HTML em alguns servidores
       const contentType = res.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
-        throw new Error("O servidor retornou HTML em vez do arquivo Excel. Verifique o caminho.");
+        throw new Error("O servidor não encontrou o arquivo binário e retornou uma página HTML.");
       }
 
       const arrayBuffer = await res.arrayBuffer();
       const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       
-      const processed = processData(jsonData as any[][]);
+      const processed = processExcelData(jsonData as any[][]);
       
       if (processed.length > 0) {
         setAulas(processed);
@@ -90,10 +96,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('senai_aulas_v2', JSON.stringify(processed));
         localStorage.setItem('senai_sync_source', fileName);
       } else {
-        throw new Error("O arquivo aulas.xlsx foi encontrado, mas não contém dados válidos ou as colunas estão incorretas.");
+        throw new Error("O arquivo aulas.xlsx foi lido, mas nenhum dado válido foi encontrado (verifique os cabeçalhos).");
       }
     } catch (e: any) {
+      console.error("Sync Error:", e);
       setError(e.message);
+      // Fallback para dados salvos anteriormente no navegador
       const saved = localStorage.getItem('senai_aulas_v2');
       if (saved) {
         setAulas(JSON.parse(saved));
@@ -109,6 +117,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
     
     syncFromRepository();
+    
+    // Auto-sync a cada 5 minutos
     const interval = setInterval(syncFromRepository, 300000);
     return () => clearInterval(interval);
   }, [syncFromRepository]);
