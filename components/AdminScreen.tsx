@@ -18,10 +18,14 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [loadingSync, setLoadingSync] = useState(false);
+    // Estado local para pré-visualização antes de salvar no contexto global
+    const [previewAulas, setPreviewAulas] = useState<Aula[]>([]);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-    const filteredAulas = useMemo(() => {
-        if (!context) return [];
-        let items = [...context.aulas];
+    const aulasExibidas = useMemo(() => {
+        // Se houver mudanças não salvas (preview), mostra o preview, senão mostra o que está no contexto
+        let items = hasUnsavedChanges ? [...previewAulas] : (context ? [...context.aulas] : []);
+        
         if (startDate || endDate) {
             items = items.filter(a => {
                 const parts = a.data.split('/');
@@ -38,14 +42,13 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             const dateB = b.data.split('/').reverse().join('-');
             return dateA.localeCompare(dateB) || a.inicio.localeCompare(b.inicio);
         });
-    }, [context?.aulas, startDate, endDate]);
+    }, [context?.aulas, previewAulas, hasUnsavedChanges, startDate, endDate]);
 
-    const handleSync = async () => {
+    const handleLoadCSV = async () => {
         setLoadingSync(true);
         try {
-            // Busca o arquivo na pasta public/csv/aulas.csv
             const res = await fetch('/csv/aulas.csv?t=' + Date.now());
-            if (!res.ok) throw new Error("Arquivo não encontrado no servidor.");
+            if (!res.ok) throw new Error("Arquivo aulas.csv não encontrado na pasta public/csv/");
             
             const text = await res.text();
             const rows = text.split(/\r?\n/).filter(r => r.trim() !== '');
@@ -54,7 +57,6 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             const separator = rows[0].includes(';') ? ';' : ',';
             const headers = rows[0].split(separator).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
 
-            // Mapeamento preciso baseado no seu arquivo CSV
             const idx = {
                 data: headers.findIndex(h => h.includes('data')),
                 sala: headers.findIndex(h => h.includes('ambiente') || h.includes('sala')),
@@ -67,14 +69,15 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             };
 
             if (idx.data === -1 || idx.turma === -1 || idx.inicio === -1) {
-                throw new Error("CSV com colunas incompatíveis. Verifique o cabeçalho.");
+                throw new Error("CSV incompatível. Colunas Data, Turma e Início são obrigatórias.");
             }
 
-            rows.shift(); // Remove cabeçalho
+            rows.shift();
 
-            const data = rows.map(r => {
+            const importedData = rows.map(r => {
                 const v = r.split(separator).map(s => s.trim().replace(/^"|"$/g, ''));
                 return {
+                    id: Math.random().toString(36).substr(2, 9),
                     data: v[idx.data] || '',
                     sala: v[idx.sala] || '',
                     turma: v[idx.turma] || '',
@@ -86,12 +89,29 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 };
             }).filter(a => a.data && a.inicio);
 
-            context?.updateAulasFromCSV(data);
-            alert(`Sincronizado! ${data.length} registros importados.`);
+            setPreviewAulas(importedData);
+            setHasUnsavedChanges(true);
+            alert(`${importedData.length} aulas carregadas para revisão. Clique em PUBLICAR para mostrar no painel.`);
         } catch (e: any) {
             alert(`Erro: ${e.message}`);
         } finally {
             setLoadingSync(false);
+        }
+    };
+
+    const handleSaveChanges = () => {
+        if (context && previewAulas.length > 0) {
+            context.updateAulasFromCSV(previewAulas);
+            setHasUnsavedChanges(false);
+            alert("DADOS PUBLICADOS COM SUCESSO! O painel principal já foi atualizado.");
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        if (hasUnsavedChanges) {
+            setPreviewAulas(prev => prev.filter(a => a.id !== id));
+        } else {
+            context?.deleteAula(id);
         }
     };
 
@@ -102,13 +122,30 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             <header className="flex justify-between items-center mb-12">
                 <div className="flex flex-col">
                     <h1 className="text-4xl font-black uppercase tracking-tighter">ADMINISTRAÇÃO</h1>
-                    <span className="text-xs font-bold text-[#ff6600] tracking-[0.4em] uppercase opacity-60">Painel Digital Senai</span>
+                    <span className="text-xs font-bold text-[#ff6600] tracking-[0.4em] uppercase opacity-60">
+                        {hasUnsavedChanges ? "MODO REVISÃO — ALTERAÇÕES NÃO SALVAS" : "MODO GESTÃO — SINCRONIZADO"}
+                    </span>
                 </div>
                 <div className="flex gap-4">
-                    <button onClick={handleSync} disabled={loadingSync} className="bg-white text-black px-8 py-3 rounded-2xl font-black uppercase text-xs flex items-center gap-3 hover:bg-[#ff6600] hover:text-white transition-all active:scale-95 disabled:opacity-30">
-                        <UploadCloudIcon className="w-5 h-5" /> {loadingSync ? "Sincronizando..." : "Sincronizar Arquivo"}
+                    <button 
+                        onClick={handleLoadCSV} 
+                        disabled={loadingSync} 
+                        className="bg-white/10 text-white px-6 py-3 rounded-2xl font-bold uppercase text-[10px] flex items-center gap-3 hover:bg-white/20 transition-all"
+                    >
+                        <UploadCloudIcon className="w-4 h-4" /> {loadingSync ? "Lendo..." : "1. Ler CSV"}
                     </button>
-                    <button onClick={onLogout} className="p-3 bg-white/5 rounded-2xl opacity-40 hover:opacity-100 transition-opacity"><LogOutIcon /></button>
+                    
+                    <button 
+                        onClick={handleSaveChanges} 
+                        disabled={!hasUnsavedChanges}
+                        className={`px-8 py-3 rounded-2xl font-black uppercase text-xs flex items-center gap-3 transition-all active:scale-95 shadow-2xl ${hasUnsavedChanges ? 'bg-[#ff6600] text-white animate-pulse' : 'bg-white/5 text-white/20 cursor-not-allowed'}`}
+                    >
+                        2. Publicar no Painel
+                    </button>
+
+                    <button onClick={onLogout} className="p-3 bg-white/5 rounded-2xl opacity-40 hover:opacity-100 transition-opacity">
+                        <LogOutIcon />
+                    </button>
                 </div>
             </header>
 
@@ -127,7 +164,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     context.addAnuncio({ src: val, type: val.toLowerCase().endsWith('.mp4') ? 'video' : 'image' });
                                     (document.getElementById('ad-url') as HTMLInputElement).value = '';
                                 }
-                            }} className="bg-[#ff6600] text-white px-5 rounded-2xl font-black">+</button>
+                            }} className="bg-white text-black px-5 rounded-2xl font-black hover:bg-[#ff6600] hover:text-white transition-all">+</button>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
                             {context.anuncios.map(ad => (
@@ -144,24 +181,24 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <FileTextIcon className="w-6 h-6 text-[#ff6600]"/>
-                            <h2 className="text-sm font-black uppercase tracking-widest">Filtros de Período</h2>
+                            <h2 className="text-sm font-black uppercase tracking-widest">Filtros de Exibição</h2>
                         </div>
-                        <button onClick={context.clearAulas} className="text-[10px] font-black text-red-500 border border-red-500/20 px-4 py-2 rounded-full hover:bg-red-500/10">LIMPAR TUDO</button>
+                        <button onClick={context.clearAulas} className="text-[10px] font-black text-red-500 border border-red-500/20 px-4 py-2 rounded-full hover:bg-red-500/10">LIMPAR BASE DE DADOS</button>
                     </div>
                     <div className="grid grid-cols-2 gap-6 bg-black/40 p-6 rounded-[2rem] border border-white/5">
                         <div className="flex flex-col gap-2">
-                            <span className="text-[10px] uppercase font-black opacity-30 tracking-widest">Início do Período</span>
+                            <span className="text-[10px] uppercase font-black opacity-30 tracking-widest">De (Data)</span>
                             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm outline-none text-white font-bold" />
                         </div>
                         <div className="flex flex-col gap-2 border-l border-white/10 pl-6">
-                            <span className="text-[10px] uppercase font-black opacity-30 tracking-widest">Fim do Período</span>
+                            <span className="text-[10px] uppercase font-black opacity-30 tracking-widest">Até (Data)</span>
                             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-sm outline-none text-white font-bold" />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-white/5 rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-3xl">
+            <div className={`rounded-[3rem] border overflow-hidden shadow-2xl backdrop-blur-3xl transition-all ${hasUnsavedChanges ? 'border-orange-500/50 bg-orange-500/5' : 'border-white/5 bg-white/5'}`}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-[11px] border-collapse">
                         <thead className="bg-white/5 uppercase font-black text-white/20 tracking-widest border-b border-white/5">
@@ -176,7 +213,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {filteredAulas.map(a => (
+                            {aulasExibidas.map(a => (
                                 <tr key={a.id} className="hover:bg-white/5 transition-colors group">
                                     <td className="p-6 font-mono opacity-40">{a.data}</td>
                                     <td className="p-6">
@@ -193,17 +230,17 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     <td className="p-6 font-bold opacity-70 italic">{a.instrutor}</td>
                                     <td className="p-6 opacity-40">{a.turma}</td>
                                     <td className="p-6 text-right">
-                                        <button onClick={() => context.deleteAula(a.id)} className="text-white/20 hover:text-red-500 hover:bg-red-500/10 p-3 rounded-2xl transition-all"><TrashIcon className="w-4 h-4"/></button>
+                                        <button onClick={() => handleDelete(a.id)} className="text-white/20 hover:text-red-500 hover:bg-red-500/10 p-3 rounded-2xl transition-all"><TrashIcon className="w-4 h-4"/></button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-                {filteredAulas.length === 0 && (
+                {aulasExibidas.length === 0 && (
                     <div className="p-32 text-center flex flex-col items-center gap-6 opacity-10">
                         <FileTextIcon className="w-20 h-20" />
-                        <p className="font-black uppercase tracking-[0.5em] text-sm">Base de dados vazia para este período</p>
+                        <p className="font-black uppercase tracking-[0.5em] text-sm">Nenhum dado encontrado</p>
                     </div>
                 )}
             </div>

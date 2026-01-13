@@ -59,8 +59,6 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
 
 const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => {
     const { isDarkMode } = useTheme();
-    
-    // Cores vibrantes inspiradas no IHC moderno
     const colors = [
         'from-orange-500 to-orange-600 shadow-orange-500/20',
         'from-blue-500 to-blue-600 shadow-blue-500/20',
@@ -71,12 +69,9 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
 
     return (
         <div className={`relative overflow-hidden rounded-[2rem] p-6 shadow-2xl transition-all duration-500 hover:scale-[1.02] flex flex-col gap-4 border border-white/10 bg-gradient-to-br ${colorClass} text-white`}>
-            {/* Tag de Turno */}
             <div className="absolute top-4 right-6 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border border-white/10">
                 {aula.turno}
             </div>
-
-            {/* Cabeçalho: Sala em Destaque */}
             <div className="space-y-1">
                 <h2 className="text-2xl font-black uppercase tracking-tighter leading-none drop-shadow-md">
                     {aula.sala.split('-')[0].trim()}
@@ -86,10 +81,7 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                     <span className="text-[11px] font-bold truncate uppercase">{aula.sala.split('-').slice(1).join('-').trim() || 'Ambiente Educacional'}</span>
                 </div>
             </div>
-
             <div className="h-px w-full bg-white/20 my-1"></div>
-
-            {/* Corpo: Detalhes */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 text-[10px] font-bold opacity-60 uppercase"><UserTieIcon className="w-3 h-3"/> Instrutor</div>
@@ -100,8 +92,6 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                     <span className="text-xs font-black truncate leading-tight">{aula.turma}</span>
                 </div>
             </div>
-
-            {/* Rodapé: Horário */}
             <div className="mt-auto flex justify-between items-center bg-black/10 rounded-2xl p-3 border border-white/5">
                 <div className="flex flex-col">
                     <span className="text-[8px] font-black opacity-50 uppercase tracking-widest">Horário da Aula</span>
@@ -146,12 +136,23 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
     useEffect(() => {
         if (context && !context.loading) {
-            const today = new Date().toLocaleDateString('pt-BR');
-            const filtered = context.aulas.filter(a => a.data === today && normalizeTurno(a.turno) === normalizeTurno(currentShift));
+            // Pegar a data de hoje formatada rigorosamente como DD/MM/YYYY
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const todayStr = `${day}/${month}/${year}`;
+
+            const filtered = context.aulas.filter(a => {
+                // Remove espaços e garante que a data bate exatamente
+                const aulaData = a.data.trim();
+                return aulaData === todayStr && normalizeTurno(a.turno) === normalizeTurno(currentShift);
+            });
+            
             setFilteredAulas(filtered);
             setPage(0);
         }
-    }, [context, currentShift]);
+    }, [context?.aulas, context?.loading, currentShift]);
 
     const ITEMS_PER_PAGE = (context?.anuncios?.length || 0) > 0 ? 6 : 8;
 
@@ -176,9 +177,12 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                         {visibleAulas.map((a, idx) => <ClassCard key={a.id} aula={a} index={idx} />)}
                     </div>
                     {filteredAulas.length === 0 && (
-                        <div className="flex-1 flex items-center justify-center opacity-10 flex-col gap-6">
+                        <div className="flex-1 flex items-center justify-center opacity-10 flex-col gap-6 text-center">
                             <div className="p-12 rounded-full border-4 border-dashed border-white/20"><ClockIcon className="w-24 h-24 stroke-[1px]" /></div>
-                            <p className="text-2xl font-black uppercase tracking-[0.4em]">Nenhuma aula programada</p>
+                            <div>
+                                <p className="text-2xl font-black uppercase tracking-[0.4em]">Sem aulas agora</p>
+                                <p className="text-[10px] mt-2 opacity-50 tracking-widest font-bold">VERIFIQUE SE A DATA NO CSV ({new Date().toLocaleDateString('pt-BR')}) ESTÁ CORRETA</p>
+                            </div>
                         </div>
                     )}
                     {filteredAulas.length > ITEMS_PER_PAGE && (
@@ -192,16 +196,14 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
                 {(context.anuncios?.length || 0) > 0 && (
                     <aside className="w-1/3 h-full rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative group">
-                         {context.anuncios.map((ad, idx) => (
-                             <div key={ad.id} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${idx === (Math.floor(Date.now()/10000) % context.anuncios.length) ? 'opacity-100' : 'opacity-0'}`}>
-                                 {ad.type === 'image' ? <img src={ad.src} className="w-full h-full object-cover" /> : <video src={ad.src} autoPlay loop muted className="w-full h-full object-cover" />}
-                             </div>
-                         ))}
-                         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                            {context.anuncios.map((_, idx) => (
-                                <div key={idx} className={`h-1 rounded-full bg-white/20 w-4`} />
-                            ))}
-                         </div>
+                         {context.anuncios.map((ad, idx) => {
+                             const isVisible = idx === (Math.floor(Date.now()/10000) % context.anuncios.length);
+                             return (
+                                <div key={ad.id} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+                                    {ad.type === 'image' ? <img src={ad.src} className="w-full h-full object-cover" /> : <video src={ad.src} autoPlay loop muted className="w-full h-full object-cover" />}
+                                </div>
+                             );
+                         })}
                     </aside>
                 )}
             </main>
