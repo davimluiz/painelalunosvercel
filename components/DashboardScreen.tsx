@@ -111,23 +111,6 @@ const ClassCard: React.FC<{ aula: Aula }> = ({ aula }) => {
     );
 };
 
-const SkeletonCard: React.FC = () => {
-    const { isDarkMode } = useTheme();
-    return (
-        <div className={`border rounded-xl p-3 shadow-lg animate-pulse h-40 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white/60 border-slate-200'}`}>
-            <div className="flex gap-3 mb-4">
-                <div className={`w-8 h-8 rounded-lg ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
-                <div className={`h-5 rounded w-1/2 mt-1 ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
-            </div>
-            <div className="space-y-1.5">
-                <div className={`h-6 rounded w-full ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
-                <div className={`h-6 rounded w-full ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
-                <div className={`h-6 rounded w-full ${isDarkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
-            </div>
-        </div>
-    );
-};
-
 const AnnouncementPanel: React.FC<{ anuncios: Anuncio[] }> = ({ anuncios }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const { isDarkMode } = useTheme();
@@ -238,7 +221,9 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                             {context.error && <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-6 rounded-xl text-center mb-8">{context.error}</div>}
                             {context.loading ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 h-full content-center">
-                                    {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+                                    <div className="h-40 bg-white/5 animate-pulse rounded-xl"></div>
+                                    <div className="h-40 bg-white/5 animate-pulse rounded-xl"></div>
+                                    <div className="h-40 bg-white/5 animate-pulse rounded-xl"></div>
                                 </div>
                             ) : visibleAulas.length > 0 ? (
                                 <>
@@ -271,6 +256,8 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                     )}
                 </div>
             </main>
+            
+            {/* Botões Flutuantes: Escondidos em Tela Cheia */}
             {!isFullscreen && (
                 <div className="fixed bottom-4 left-4 flex gap-3 z-50">
                     <button onClick={onAdminClick} className={`p-3 rounded-full transition-all duration-300 group backdrop-blur-md border ${

@@ -86,14 +86,14 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const [newAula, setNewAula] = useState<Omit<Aula, 'id'>>({ data: new Date().toLocaleDateString('pt-BR'), sala: '', turma: '', instrutor: '', unidade_curricular: '', inicio: '', fim: '' });
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-    const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+    const [syncing, setSyncing] = useState(false);
 
     if (!context) return null;
 
     const sortedAulas = useMemo(() => {
         const turnosOrder: { [key: string]: number } = { 'Matutino': 1, 'Vespertino': 2, 'Noturno': 3 };
         let filtered = [...context.aulas];
+        
         if (startDate || endDate) {
             filtered = filtered.filter(aula => {
                 const [d, m, y] = aula.data.split('/');
@@ -106,90 +106,137 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             const today = new Date().toLocaleDateString('pt-BR');
             filtered = filtered.filter(a => a.data === today);
         }
+
         return filtered.sort((a, b) => {
             const [d1, m1, y1] = a.data.split('/');
             const [d2, m2, y2] = b.data.split('/');
-            const diffDate = new Date(`${y1}-${m1}-${d1}`).getTime() - new Date(`${y2}-${m2}-${d2}`).getTime();
-            if (diffDate !== 0) return diffDate;
+            const dateA = new Date(`${y1}-${m1}-${d1}`).getTime();
+            const dateB = new Date(`${y2}-${m2}-${d2}`).getTime();
+            if (dateA !== dateB) return dateA - dateB;
             return (turnosOrder[a.turno!] || 0) - (turnosOrder[b.turno!] || 0) || a.inicio.localeCompare(b.inicio);
         });
     }, [context.aulas, startDate, endDate]);
 
-    const handleCSV = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleSyncGithubCSV = async () => {
+        setSyncing(true);
+        try {
+            const response = await fetch('/csv/aulas.csv');
+            if (!response.ok) throw new Error("Arquivo não encontrado em public/csv/aulas.csv");
+            const text = await response.text();
+            const rows = text.split('\n').filter(r => r.trim() !== '');
+            rows.shift(); // Remove header
+            const data = rows.map(row => {
+                const vals = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                return { 
+                    data: vals[0], 
+                    sala: vals[1], 
+                    turma: vals[2], 
+                    instrutor: vals[3], 
+                    unidade_curricular: vals[4], 
+                    inicio: vals[5], 
+                    fim: vals[6], 
+                    turno: normalizarTurnoCSV(vals[7]) || calcularTurno(vals[5]) 
+                };
+            }).filter(a => a.data && a.sala);
+            context.updateAulasFromCSV(data);
+            setToast({ message: "Sincronizado com o GitHub!", type: 'success' });
+        } catch (e: any) {
+            setToast({ message: e.message, type: 'error' });
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleLocalCSV = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (event) => {
             const text = event.target?.result as string;
-            try {
-                const rows = text.split('\n').filter(r => r.trim() !== '');
-                const headers = rows.shift()?.split(',').map(h => h.trim()) || [];
-                const data = rows.map(row => {
-                    const vals = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-                    const inicio = vals[5];
-                    return { data: vals[0], sala: vals[1], turma: vals[2], instrutor: vals[3], unidade_curricular: vals[4], inicio, fim: vals[6], turno: normalizarTurnoCSV(vals[7]) || calcularTurno(inicio) };
-                }).filter(a => a.data && a.sala);
-                context.updateAulasFromCSV(data);
-                setToast({ message: `${data.length} aulas carregadas.`, type: 'success' });
-            } catch { setToast({ message: 'Erro ao ler CSV.', type: 'error' }); }
+            const rows = text.split('\n').filter(r => r.trim() !== '');
+            rows.shift();
+            const data = rows.map(row => {
+                const vals = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                return { data: vals[0], sala: vals[1], turma: vals[2], instrutor: vals[3], unidade_curricular: vals[4], inicio: vals[5], fim: vals[6], turno: normalizarTurnoCSV(vals[7]) || calcularTurno(vals[5]) };
+            }).filter(a => a.data && a.sala);
+            context.updateAulasFromCSV(data);
+            setToast({ message: "Importação local concluída.", type: 'success' });
         };
         reader.readAsText(file, 'UTF-8');
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#0b0b0f] to-[#1a1a20] text-white p-6">
+        <div className="min-h-screen bg-[#0b0b0f] text-white p-6">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            <header className="flex justify-between items-center mb-8"><h1 className="text-3xl font-bold">Admin Online</h1><button onClick={onLogout} className="flex items-center gap-2 hover:text-[#ff6600] transition-colors"><LogOutIcon /> Sair</button></header>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                    <div className="bg-white/10 p-6 rounded-2xl border border-white/20">
-                        <h2 className="text-xl font-bold text-[#ff6600] flex items-center gap-2 mb-4"><FileTextIcon /> Importar CSV</h2>
-                        <input type="file" accept=".csv" onChange={handleCSV} className="w-full text-sm" />
-                        <p className="text-[10px] text-white/30 mt-2">Envie o arquivo atualizado para a pasta 'public' no Github para automatizar no futuro.</p>
-                    </div>
-                    <div className="bg-white/10 p-6 rounded-2xl border border-white/20">
-                        <h2 className="text-xl font-bold text-[#ff6600] flex items-center gap-2 mb-4"><CameraIcon /> Anúncios ({context.anuncios.length}/4)</h2>
-                        <div className="grid grid-cols-2 gap-3 mb-4">{context.anuncios.map(ad => (
-                            <div key={ad.id} className="relative aspect-video bg-black/50 rounded-lg group">
-                                {ad.type === 'image' ? <img src={ad.src} className="w-full h-full object-cover" /> : <video src={ad.src} />}
-                                <button onClick={() => context.deleteAnuncio(ad.id)} className="absolute top-1 right-1 bg-red-600 p-1 rounded-full"><TrashIcon className="w-3 h-3" /></button>
-                            </div>
-                        ))}</div>
-                        <input type="file" onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => { setMediaPreview(reader.result as string); setMediaType(file.type.startsWith('image') ? 'image' : 'video'); };
-                                reader.readAsDataURL(file);
-                            }
-                        }} className="text-xs" />
-                        {mediaPreview && <button onClick={() => { context.addAnuncio({ src: mediaPreview!, type: mediaType! }); setMediaPreview(null); }} className="mt-2 w-full bg-[#ff6600] p-2 rounded">Adicionar</button>}
-                    </div>
+            
+            <header className="flex justify-between items-center mb-8">
+                <h1 className="text-2xl font-bold">Gerenciador do Painel</h1>
+                <div className="flex gap-4">
+                     <button 
+                        onClick={handleSyncGithubCSV} 
+                        disabled={syncing}
+                        className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm flex items-center gap-2"
+                    >
+                        {syncing ? "Sincronizando..." : "Sincronizar com GitHub"}
+                    </button>
+                    <button onClick={onLogout} className="text-white/50 hover:text-white"><LogOutIcon /></button>
                 </div>
-                <div className="bg-white/10 p-6 rounded-2xl border border-white/20">
-                    <h2 className="text-xl font-bold text-[#ff6600] flex items-center gap-2 mb-4"><PlusCircleIcon /> Nova Aula</h2>
-                    <form onSubmit={e => { e.preventDefault(); context.addAula({...newAula, turno: calcularTurno(newAula.inicio)}); }} className="space-y-3">
-                        <input placeholder="Data (DD/MM/YYYY)" value={newAula.data} onChange={e => setNewAula({...newAula, data: e.target.value})} className="w-full bg-black/20 p-2 rounded" />
-                        <input placeholder="Turma" value={newAula.turma} onChange={e => setNewAula({...newAula, turma: e.target.value})} className="w-full bg-black/20 p-2 rounded" />
-                        <div className="flex gap-2"><input type="time" value={newAula.inicio} onChange={e => setNewAula({...newAula, inicio: e.target.value})} className="w-1/2 bg-black/20 p-2 rounded" /><input type="time" value={newAula.fim} onChange={e => setNewAula({...newAula, fim: e.target.value})} className="w-1/2 bg-black/20 p-2 rounded" /></div>
-                        <button type="submit" className="w-full bg-green-600 font-bold py-2 rounded">Adicionar Aula</button>
-                    </form>
+            </header>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                    <h2 className="text-lg font-bold text-[#ff6600] mb-4 flex items-center gap-2"><UploadCloudIcon /> Importar Arquivo</h2>
+                    <input type="file" accept=".csv" onChange={handleLocalCSV} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer" />
+                    <p className="text-[10px] text-white/30 mt-4 uppercase tracking-widest font-bold">O sistema busca automaticamente em: /public/csv/aulas.csv</p>
+                </div>
+
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                    <h2 className="text-lg font-bold text-[#ff6600] mb-4 flex items-center gap-2"><CameraIcon /> Mídias do Carrossel</h2>
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                        {context.anuncios.map(ad => (
+                            <div key={ad.id} className="relative aspect-video bg-black rounded border border-white/10 overflow-hidden">
+                                {ad.type === 'image' ? <img src={ad.src} className="w-full h-full object-cover" /> : <video src={ad.src} className="w-full h-full object-cover" />}
+                                <button onClick={() => context.deleteAnuncio(ad.id)} className="absolute top-0 right-0 bg-red-600 p-1 rounded-bl"><TrashIcon className="w-3 h-3" /></button>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[10px] text-white/40 mb-2">Para usar arquivos do GitHub, coloque na pasta /public/midia e informe o caminho completo (ex: /midia/video.mp4)</p>
+                    <div className="flex gap-2">
+                        <input id="ad-src" type="text" placeholder="URL ou Caminho da Mídia" className="flex-1 bg-black/40 p-2 rounded text-sm" />
+                        <button onClick={() => {
+                            const input = document.getElementById('ad-src') as HTMLInputElement;
+                            if (input.value) {
+                                const type = input.value.match(/\.(mp4|webm)$/i) ? 'video' : 'image';
+                                context.addAnuncio({ src: input.value, type });
+                                input.value = '';
+                            }
+                        }} className="bg-[#ff6600] px-4 py-2 rounded text-sm font-bold">Add</button>
+                    </div>
                 </div>
             </div>
-            <div className="mt-8 bg-white/10 p-6 rounded-2xl border border-white/20">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-[#ff6600]">Filtrar por Período</h2>
-                    <div className="flex gap-2 items-center text-xs">
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-black/40 p-1 rounded" />
-                        <span>até</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-black/40 p-1 rounded" />
-                        {(startDate || endDate) && <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-red-400">Limpar</button>}
+
+            <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2"><FileTextIcon /> Aulas Cadastradas</h2>
+                    
+                    <div className="flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/10">
+                        <span className="text-[10px] font-bold uppercase text-white/30 px-2">Filtrar período:</span>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs border-r border-white/10 pr-2" />
+                        <span className="text-[10px] text-white/20">até</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs pl-2" />
+                        {(startDate || endDate) && <button onClick={() => {setStartDate(''); setEndDate('');}} className="text-red-500 hover:text-red-400 p-1"><XIcon className="w-4 h-4" /></button>}
                     </div>
-                    <button onClick={context.clearAulas} className="text-red-500 text-xs border border-red-500/30 px-3 py-1 rounded-full">Limpar Cache</button>
+
+                    <button onClick={context.clearAulas} className="text-red-500 text-xs hover:bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">Limpar Painel</button>
                 </div>
-                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#ff6600]">
+
+                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                     {sortedAulas.map(a => <AulaItem key={a.id} aula={a} onUpdate={context.updateAula} onDelete={context.deleteAula} />)}
-                    {sortedAulas.length === 0 && <p className="text-center text-white/30 py-10">Nenhuma aula encontrada para este período.</p>}
+                    {sortedAulas.length === 0 && (
+                        <div className="py-20 text-center text-white/20 border-2 border-dashed border-white/5 rounded-2xl">
+                            Nenhuma aula encontrada para este período.
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -198,7 +245,13 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
 const AdminScreen: React.FC<{ onReturnToDashboard: () => void }> = ({ onReturnToDashboard }) => {
     const [auth, setAuth] = useState(false);
-    if (!auth) return <div className="h-screen w-screen flex items-center justify-center bg-black"><LoginModal onLoginSuccess={() => setAuth(true)} onLoginError={alert} /><button onClick={onReturnToDashboard} className="fixed top-6 left-6 text-white/50">Voltar</button></div>;
+    if (!auth) return (
+        <div className="h-screen w-screen flex items-center justify-center bg-[#050505]">
+            <LoginModal onLoginSuccess={() => setAuth(true)} onLoginError={alert} />
+            <button onClick={onReturnToDashboard} className="fixed top-6 left-6 text-white/30 hover:text-white flex items-center gap-2 uppercase text-xs font-bold"><LogOutIcon className="rotate-180" /> Voltar</button>
+        </div>
+    );
     return <AdminPanel onLogout={onReturnToDashboard} />;
 };
+
 export default AdminScreen;

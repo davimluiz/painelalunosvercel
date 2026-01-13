@@ -10,39 +10,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Carrega dados iniciais do localStorage ou do arquivo public/db.json
-  const fetchData = useCallback(async () => {
+  // Carrega dados do localStorage ao iniciar
+  const loadInitialData = useCallback(() => {
     try {
-      setLoading(true);
       const savedAulas = localStorage.getItem('senai_aulas');
       const savedAnuncios = localStorage.getItem('senai_anuncios');
-
-      if (savedAulas && savedAnuncios) {
-        setAulas(JSON.parse(savedAulas));
-        setAnunciosState(JSON.parse(savedAnuncios));
-      } else {
-        // Se não houver nada no localStorage, tenta buscar o arquivo estático da pasta public
-        const response = await fetch('/db.json');
-        if (response.ok) {
-          const data = await response.json();
-          setAulas(data.aulas || []);
-          setAnunciosState(data.anuncios || []);
-        }
-      }
-      setError(null);
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err);
-      setError("Não foi possível carregar os dados iniciais. Certifique-se de que public/db.json existe no seu repositório.");
+      if (savedAulas) setAulas(JSON.parse(savedAulas));
+      if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
+    } catch (e) {
+      console.error("Erro ao carregar cache local", e);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    loadInitialData();
+  }, [loadInitialData]);
 
-  // Persistência em localStorage sempre que os estados mudarem
+  // Salva no localStorage sempre que houver mudança
   useEffect(() => {
     if (!loading) {
       localStorage.setItem('senai_aulas', JSON.stringify(aulas));
@@ -72,7 +58,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const clearAulas = useCallback(() => {
-    if(confirm("Deseja apagar todas as aulas salvas no seu navegador?")) {
+    if(confirm("Deseja apagar todas as aulas do painel?")) {
       setAulas([]);
     }
   }, []);
