@@ -12,18 +12,14 @@ const MaximizeIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 const normalizeTurno = (t: string | undefined) => {
     if (!t) return '';
-    const lower = t.toLowerCase();
-    if (lower.includes('manhã') || lower.includes('matutino')) return 'matutino';
-    if (lower.includes('tarde') || lower.includes('vespertino')) return 'vespertino';
-    if (lower.includes('noite') || lower.includes('noturno')) return 'noturno';
-    return lower;
+    return t.toLowerCase().trim();
 };
 
 const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ currentShift, onFullscreen }) => {
     const { formattedDate, formattedTime } = useCurrentTime();
     const { isDarkMode } = useTheme();
     
-    let shiftColor = isDarkMode ? 'text-white/80' : 'text-slate-700';
+    let shiftColor = 'text-white/80';
     if (currentShift === 'Matutino') shiftColor = 'text-yellow-400';
     if (currentShift === 'Vespertino') shiftColor = 'text-orange-400';
     if (currentShift === 'Noturno') shiftColor = 'text-indigo-400';
@@ -31,7 +27,7 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
     return (
         <header className={`flex-none p-4 flex justify-between items-center px-8 h-24 z-20 relative border-b transition-colors duration-500 ${isDarkMode ? 'bg-black/40 backdrop-blur-xl border-white/5 text-white' : 'bg-white/70 backdrop-blur-xl border-slate-200 text-slate-800'}`}>
             <div className="flex flex-col">
-                <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-[#ff6600]' : 'text-[#ff6600]'}`}>SENAI • GESTÃO DE AMBIENTES</span>
+                <span className={`text-[10px] font-black uppercase tracking-[0.3em] text-[#ff6600]`}>SENAI • GESTÃO DE AMBIENTES</span>
                 <div className="flex items-center gap-3 mt-1">
                     <button onClick={onFullscreen} className="text-[11px] font-bold hover:text-[#ff6600] flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-all">
                         <MaximizeIcon className="w-3.5 h-3.5" /> MODO TV
@@ -46,7 +42,7 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
 
             <div className="flex items-center gap-3">
                 <div className={`flex flex-col items-end pr-4 border-r border-white/10`}>
-                    <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Turno Atual</span>
+                    <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">Turno Agora</span>
                     <span className={`text-sm font-black uppercase tracking-tighter ${shiftColor}`}>{currentShift}</span>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-[#ff6600]/10 flex items-center justify-center border border-[#ff6600]/20">
@@ -58,7 +54,6 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
 };
 
 const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => {
-    const { isDarkMode } = useTheme();
     const colors = [
         'from-orange-500 to-orange-600 shadow-orange-500/20',
         'from-blue-500 to-blue-600 shadow-blue-500/20',
@@ -124,10 +119,20 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
     useEffect(() => {
         const update = () => {
-            const h = new Date().getHours();
-            if (h < 12) setCurrentShift('Matutino');
-            else if (h < 18) setCurrentShift('Vespertino');
-            else setCurrentShift('Noturno');
+            const now = new Date();
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const totalMin = (h * 60) + m;
+
+            // Lógica sincronizada com o Admin
+            if (totalMin >= 360 && totalMin <= 690) setCurrentShift('Matutino'); // 6:00 - 11:30
+            else if (totalMin >= 691 && totalMin <= 1050) setCurrentShift('Vespertino'); // 11:31 - 17:30
+            else if (totalMin >= 1051 && totalMin <= 1320) setCurrentShift('Noturno'); // 17:31 - 22:00
+            else {
+                // Fora de horário comercial, mantemos o turno mais provável
+                if (h < 6) setCurrentShift('Matutino');
+                else setCurrentShift('Noturno');
+            }
         };
         update();
         const interval = setInterval(update, 60000);
@@ -136,7 +141,6 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
     useEffect(() => {
         if (context && !context.loading) {
-            // Pegar a data de hoje formatada rigorosamente como DD/MM/YYYY
             const now = new Date();
             const day = String(now.getDate()).padStart(2, '0');
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -144,8 +148,8 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
             const todayStr = `${day}/${month}/${year}`;
 
             const filtered = context.aulas.filter(a => {
-                // Remove espaços e garante que a data bate exatamente
                 const aulaData = a.data.trim();
+                // Compara data de hoje e se o turno calculado bate com o turno atual
                 return aulaData === todayStr && normalizeTurno(a.turno) === normalizeTurno(currentShift);
             });
             
@@ -180,8 +184,8 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                         <div className="flex-1 flex items-center justify-center opacity-10 flex-col gap-6 text-center">
                             <div className="p-12 rounded-full border-4 border-dashed border-white/20"><ClockIcon className="w-24 h-24 stroke-[1px]" /></div>
                             <div>
-                                <p className="text-2xl font-black uppercase tracking-[0.4em]">Sem aulas agora</p>
-                                <p className="text-[10px] mt-2 opacity-50 tracking-widest font-bold">VERIFIQUE SE A DATA NO CSV ({new Date().toLocaleDateString('pt-BR')}) ESTÁ CORRETA</p>
+                                <p className="text-2xl font-black uppercase tracking-[0.4em]">Sem atividades agora</p>
+                                <p className="text-[10px] mt-2 opacity-50 tracking-widest font-bold uppercase">Painel aguardando o próximo turno ou publicação de dados</p>
                             </div>
                         </div>
                     )}
