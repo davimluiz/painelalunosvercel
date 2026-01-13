@@ -56,62 +56,55 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
 const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => {
     const { isDarkMode } = useTheme();
 
-    // Lógica para limpar o nome do ambiente caso ele seja muito longo ou tenha prefixos
-    const formatSala = (name: string) => {
-        // Se o nome vier como 'VTRIA-3-SALA-3006', podemos tentar extrair só a parte final
-        // mas por segurança vamos exibir o que está no CSV, limpando apenas o excesso
-        return name.replace(/['"]/g, '').trim();
+    const formatText = (text: string) => {
+        return text.replace(/['"]/g, '').trim();
     };
 
     return (
         <div className={`relative overflow-hidden rounded-[2rem] p-6 md:p-8 shadow-2xl transition-all duration-500 hover:scale-[1.02] flex flex-col gap-4 border ${isDarkMode ? 'bg-gradient-to-br from-zinc-900 to-black border-white/10 shadow-black/40' : 'bg-white border-slate-200 shadow-slate-200'}`}>
             
-            {/* Tag de Turno e Identificador superior */}
-            <div className="flex justify-between items-start mb-2">
+            {/* Cabeçalho do Card */}
+            <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-2 text-[#ff6600] font-black text-[9px] uppercase tracking-[0.3em]">
-                    <BuildingIcon className="w-3.5 h-3.5" /> Ambiente Educacional
+                    <UsersIcon className="w-3.5 h-3.5" /> Informações da Turma
                 </div>
                 <div className="bg-[#ff6600]/10 text-[#ff6600] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter border border-[#ff6600]/20">
                     {aula.turno}
                 </div>
             </div>
 
-            {/* O DESTAQUE: NOME DO AMBIENTE (SALA) */}
-            <div className="flex-1 flex items-center min-h-[80px] md:min-h-[100px]">
-                <h2 className={`text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none break-words drop-shadow-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {formatSala(aula.sala)}
+            {/* DESTAQUE PRINCIPAL: TURMA */}
+            <div className="flex-1 flex flex-col justify-center min-h-[120px] md:min-h-[140px] gap-2">
+                <h2 className={`text-3xl md:text-4xl font-black uppercase tracking-tighter leading-tight break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    {formatText(aula.turma)}
                 </h2>
+                
+                {/* AMBIENTE (VTRIAS) ABAIXO DA TURMA */}
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2 text-[#ff6600] font-bold text-[10px] md:text-xs uppercase tracking-tight">
+                        <BuildingIcon className="w-3.5 h-3.5 opacity-70" /> {formatText(aula.sala)}
+                    </div>
+                    {/* INSTRUTOR ABAIXO DO AMBIENTE */}
+                    <div className="flex items-center gap-2 opacity-40 font-black text-[9px] md:text-[10px] uppercase italic mt-1">
+                        <UserTieIcon className="w-3 h-3" /> {formatText(aula.instrutor)}
+                    </div>
+                </div>
             </div>
 
             <div className="h-px w-full bg-[#ff6600]/10 my-1"></div>
 
-            {/* Informações Secundárias */}
-            <div className="grid grid-cols-1 gap-4 mt-2">
-                <div className="flex flex-col gap-1">
-                    <span className="text-[8px] font-black opacity-40 uppercase tracking-widest">Unidade Curricular</span>
-                    <span className={`text-xs md:text-sm font-bold truncate ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>{aula.unidade_curricular || 'Atividade SENAI'}</span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1">
-                         <div className="flex items-center gap-1.5 text-[8px] font-black opacity-30 uppercase tracking-widest">
-                             <UserTieIcon className="w-2.5 h-2.5"/> Instrutor
-                        </div>
-                        <span className={`text-[10px] md:text-xs font-black truncate italic ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>{aula.instrutor}</span>
-                    </div>
-                    <div className="flex flex-col gap-1 items-end text-right">
-                        <div className="flex items-center gap-1.5 text-[8px] font-black opacity-30 uppercase tracking-widest">
-                             Turma <UsersIcon className="w-2.5 h-2.5"/>
-                        </div>
-                        <span className={`text-[10px] md:text-xs font-black truncate ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>{aula.turma}</span>
-                    </div>
-                </div>
+            {/* Unidade Curricular */}
+            <div className="flex flex-col gap-1">
+                <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Unidade Curricular</span>
+                <span className={`text-[11px] md:text-xs font-bold truncate ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+                    {aula.unidade_curricular || 'Atividade SENAI'}
+                </span>
             </div>
 
-            {/* Horário em Destaque na base */}
-            <div className="mt-4 flex justify-between items-center bg-[#ff6600] rounded-2xl p-4 md:p-5 shadow-lg shadow-orange-500/20">
+            {/* Horário na base */}
+            <div className="mt-2 flex justify-between items-center bg-[#ff6600] rounded-2xl p-4 md:p-5 shadow-lg shadow-orange-500/20">
                 <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Início / Término</span>
+                    <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Horário de Aula</span>
                     <div className="flex items-center gap-2 font-black text-lg md:text-xl text-white">
                          {aula.inicio} — {aula.fim}
                     </div>
