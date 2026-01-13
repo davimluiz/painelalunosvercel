@@ -32,18 +32,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const processCSVData = (jsonData: any[][]) => {
     if (!jsonData || jsonData.length < 2) return [];
     
-    // Normalização dos cabeçalhos para encontrar as colunas
+    // Normalização dos cabeçalhos
     const headers = jsonData[0].map(h => String(h || '').toLowerCase().trim().replace(/^["']|["']$/g, ''));
     
     const idx = {
       data: headers.findIndex(h => h.includes('data')),
-      sala: headers.findIndex(h => h.includes('ambiente') || h.includes('sala') || h.includes('justificativa')),
+      // Ajuste crucial: O Ambiente (Sala) deve conter 'ambiente' ou 'sala', mas NÃO pode conter 'instrutor'
+      // Isso evita que a coluna 'Instrutor/Ambiente Reserva' seja confundida com a sala principal.
+      sala: headers.findIndex(h => (h.includes('ambiente') || h.includes('sala')) && !h.includes('instrutor')),
       turma: headers.findIndex(h => h.includes('turma') || h.includes('tipo')),
-      instrutor: headers.findIndex(h => h.includes('instrutor') || h.includes('reserva')),
+      instrutor: headers.findIndex(h => h.includes('instrutor')),
       uc: headers.findIndex(h => h.includes('unidade') || h.includes('curricular') || h.includes('solicitante')),
       inicio: headers.findIndex(h => h.includes('inicio') || h.includes('início')),
       fim: headers.findIndex(h => h.includes('fim'))
     };
+
+    // Fallback: Se não achou sala pela regra acima, tenta 'justificativa'
+    if (idx.sala === -1) {
+        idx.sala = headers.findIndex(h => h.includes('justificativa'));
+    }
 
     // Validação mínima obrigatória
     if (idx.data === -1 || idx.inicio === -1) {
@@ -53,12 +60,23 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return jsonData.slice(1).map(v => {
       const hInicio = String(v[idx.inicio] || '').trim();
+      let salaDetectada = String(v[idx.sala] || 'Ambiente não definido').replace(/^["']|["']$/g, '').trim();
+      let instrutorDetectado = String(v[idx.instrutor] || '').trim();
+
+      // Lógica solicitada: Se o valor em 'sala' não começar com VTRIA, mas o valor em 'instrutor' começar,
+      // significa que as colunas podem estar trocadas ou o dado correto está na outra coluna.
+      if (!salaDetectada.toUpperCase().startsWith('VTRIA') && instrutorDetectado.toUpperCase().startsWith('VTRIA')) {
+          const temp = salaDetectada;
+          salaDetectada = instrutorDetectado;
+          instrutorDetectado = temp;
+      }
+
       return {
         id: Math.random().toString(36).substr(2, 9),
         data: String(v[idx.data] || '').trim(),
-        sala: String(v[idx.sala] || 'Ambiente não definido').replace(/^["']|["']$/g, '').trim(),
+        sala: salaDetectada,
         turma: String(v[idx.turma] || '').trim(),
-        instrutor: String(v[idx.instrutor] || '').trim(),
+        instrutor: instrutorDetectado,
         unidade_curricular: String(v[idx.uc] || '').trim(),
         inicio: hInicio,
         fim: String(v[idx.fim] || '').trim(),
@@ -72,21 +90,18 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     try {
       const fileName = 'aulas.csv';
-      // Busca estritamente o arquivo .csv
       const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
       
       if (!res.ok) {
-        throw new Error(`O arquivo ${fileName} não foi encontrado na pasta /csv/.`);
+        throw new Error(`Arquivo ${fileName} não encontrado no servidor.`);
       }
 
-      // Evita ler o index.html em caso de redirecionamento 404 de SPA
       const contentType = res.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
-        throw new Error("Servidor retornou HTML em vez do arquivo CSV.");
+        throw new Error("O servidor retornou uma página HTML em vez do CSV.");
       }
 
       const text = await res.text();
-      // O SheetJS também é excelente para ler CSVs respeitando aspas e vírgulas
       const workbook = XLSX.read(text, { type: 'string' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
@@ -100,10 +115,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('senai_aulas_v2', JSON.stringify(processed));
         localStorage.setItem('senai_sync_source', fileName);
       } else {
-        throw new Error("O arquivo aulas.csv está vazio ou tem formato inválido.");
+        throw new Error("O arquivo aulas.csv não contém dados compatíveis com o padrão VTRIA.");
       }
     } catch (e: any) {
-      console.error("Erro na sincronização CSV:", e);
+      console.error("Sync Error:", e);
       setError(e.message);
       const saved = localStorage.getItem('senai_aulas_v2');
       if (saved) {
