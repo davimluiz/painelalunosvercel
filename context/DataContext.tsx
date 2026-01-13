@@ -10,41 +10,37 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Carrega dados do localStorage ao iniciar
-  const loadInitialData = useCallback(() => {
-    try {
-      const savedAulas = localStorage.getItem('senai_aulas');
-      const savedAnuncios = localStorage.getItem('senai_anuncios');
-      if (savedAulas) setAulas(JSON.parse(savedAulas));
-      if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
-    } catch (e) {
-      console.error("Erro ao carregar cache local", e);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        const savedAulas = localStorage.getItem('senai_aulas_v2');
+        const savedAnuncios = localStorage.getItem('senai_anuncios_v2');
+        if (savedAulas) setAulas(JSON.parse(savedAulas));
+        if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
+      } catch (e) {
+        console.error("Erro ao carregar dados locais", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
-
-  // Salva no localStorage sempre que houver mudança
-  useEffect(() => {
     if (!loading) {
-      localStorage.setItem('senai_aulas', JSON.stringify(aulas));
-      localStorage.setItem('senai_anuncios', JSON.stringify(anuncios));
+      localStorage.setItem('senai_aulas_v2', JSON.stringify(aulas));
+      localStorage.setItem('senai_anuncios_v2', JSON.stringify(anuncios));
     }
   }, [aulas, anuncios, loading]);
 
   const addAula = useCallback((aula: Omit<Aula, 'id'>) => {
-    const novaAula = { ...aula, id: Date.now().toString() };
-    setAulas(prev => [...prev, novaAula]);
+    setAulas(prev => [...prev, { ...aula, id: Date.now().toString() }]);
   }, []);
 
   const updateAulasFromCSV = useCallback((data: Omit<Aula, 'id'>[]) => {
     const novasAulas = data.map(d => ({ 
       ...d, 
-      id: `${d.sala}-${d.turma}-${Math.random().toString(36).substr(2, 9)}` 
+      id: Math.random().toString(36).substr(2, 9) 
     }));
     setAulas(novasAulas);
   }, []);
@@ -58,7 +54,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const clearAulas = useCallback(() => {
-    if(confirm("Deseja apagar todas as aulas do painel?")) {
+    if(confirm("Deseja apagar todos os dados do painel?")) {
       setAulas([]);
     }
   }, []);
@@ -68,8 +64,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       alert("Limite de 4 anúncios atingido.");
       return;
     }
-    const ad = { ...novoAnuncio, id: Date.now().toString() };
-    setAnunciosState(prev => [...prev, ad]);
+    setAnunciosState(prev => [...prev, { ...novoAnuncio, id: Date.now().toString() }]);
   }, [anuncios.length]);
 
   const deleteAnuncio = useCallback((id: string) => {
