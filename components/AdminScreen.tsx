@@ -47,7 +47,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto items-center">
                     {context.syncSource && (
                         <div className="flex flex-col items-end mr-2">
-                             <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Arquivo Atual</span>
+                             <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Arquivo Ativo</span>
                              <span className="text-[10px] font-bold text-[#ff6600] uppercase tracking-tighter bg-[#ff6600]/5 px-2 py-0.5 rounded border border-[#ff6600]/10">{context.syncSource}</span>
                         </div>
                     )}
@@ -57,7 +57,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         className="w-full md:w-auto bg-[#ff6600] text-white px-6 md:px-8 py-3 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-3 hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95 disabled:opacity-50"
                     >
                         <UploadCloudIcon className={`w-4 h-4 md:w-5 md:h-5 ${context.loading ? 'animate-bounce' : ''}`} /> 
-                        {context.loading ? "SINCRONIZANDO..." : "BUSCAR NOVOS DADOS"}
+                        {context.loading ? "SINCRONIZANDO..." : "BUSCAR EXCEL (XLSX)"}
                     </button>
                     <button onClick={onLogout} className="p-3 bg-white/5 rounded-2xl opacity-40 hover:opacity-100 transition-opacity">
                         <LogOutIcon />
@@ -100,7 +100,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 <div className="lg:col-span-3 bg-white/5 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-white/5 shadow-2xl flex flex-col gap-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-3"><FileTextIcon className="w-6 h-6 text-[#ff6600]"/><h2 className="text-sm font-black uppercase tracking-widest">Visualização de Aulas</h2></div>
-                        <p className="text-[9px] md:text-[10px] font-bold opacity-30 italic">O sistema busca automaticamente o arquivo com mais dados entre 'aulas.xlsx' e 'aulas.csv' na pasta /csv/.</p>
+                        <p className="text-[9px] md:text-[10px] font-bold opacity-30 italic">O sistema agora busca exclusivamente o arquivo 'aulas.xlsx' na pasta /csv/.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 bg-black/40 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-white/5">
                         <div className="flex flex-col gap-2"><span className="text-[9px] uppercase font-black opacity-30 tracking-widest">Filtrar Início</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm outline-none text-white font-bold" /></div>

@@ -43,7 +43,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fim: headers.findIndex(h => h.includes('fim'))
     };
 
-    // Se não encontrar colunas básicas, o arquivo pode estar mal formatado
     if (idx.data === -1 || idx.inicio === -1) return [];
 
     return jsonData.slice(1).map(v => {
@@ -66,46 +65,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     setError(null);
     try {
-      const extensions = ['xlsx', 'csv'];
-      let bestData: Aula[] = [];
-      let bestSource: string | null = null;
-
-      // Percorre todas as extensões possíveis e tenta processar
-      for (const ext of extensions) {
-        try {
-          const fileName = `aulas.${ext}`;
-          const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
-          
-          if (!res.ok) continue;
-
-          // Verifica se o conteúdo é HTML (comum em SPAs quando o arquivo não existe e o servidor redireciona para index.html)
-          const contentType = res.headers.get('content-type');
-          if (contentType && contentType.includes('text/html')) continue;
-
-          const arrayBuffer = await res.arrayBuffer();
-          const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-          
-          const processed = processData(jsonData as any[][]);
-          
-          // Heurística: se este arquivo tem mais registros válidos, consideramos ele o "mais correto"
-          if (processed.length > bestData.length) {
-            bestData = processed;
-            bestSource = fileName;
-          }
-        } catch (e) {
-          console.warn(`Erro ao processar arquivo.${ext}:`, e);
-        }
+      const fileName = 'aulas.xlsx';
+      const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
+      
+      if (!res.ok) {
+        throw new Error(`Arquivo ${fileName} não encontrado na pasta /csv/ do servidor.`);
       }
 
-      if (bestData.length > 0) {
-        setAulas(bestData);
-        setSyncSource(bestSource);
-        localStorage.setItem('senai_aulas_v2', JSON.stringify(bestData));
-        localStorage.setItem('senai_sync_source', bestSource || '');
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error("O servidor retornou HTML em vez do arquivo Excel. Verifique o caminho.");
+      }
+
+      const arrayBuffer = await res.arrayBuffer();
+      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      
+      const processed = processData(jsonData as any[][]);
+      
+      if (processed.length > 0) {
+        setAulas(processed);
+        setSyncSource(fileName);
+        localStorage.setItem('senai_aulas_v2', JSON.stringify(processed));
+        localStorage.setItem('senai_sync_source', fileName);
       } else {
-        throw new Error("Nenhum dado de aula válido encontrado nos arquivos da pasta /csv/.");
+        throw new Error("O arquivo aulas.xlsx foi encontrado, mas não contém dados válidos ou as colunas estão incorretas.");
       }
     } catch (e: any) {
       setError(e.message);
