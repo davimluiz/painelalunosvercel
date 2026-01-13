@@ -5,7 +5,12 @@ import { Aula, Anuncio, DataContextType } from '../types';
 // Declaração global para a biblioteca SheetJS carregada via CDN no index.html
 declare const XLSX: any;
 
-export const DataContext = createContext<DataContextType | undefined>(undefined);
+export interface ExtendedDataContextType extends DataContextType {
+  syncFromRepository: () => Promise<void>;
+  syncSource: string | null;
+}
+
+export const DataContext = createContext<ExtendedDataContextType | undefined>(undefined);
 
 const calcularTurnoPorHorario = (horarioStr: string): string => {
     if (!horarioStr || !horarioStr.includes(':')) return 'Matutino';
@@ -22,10 +27,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [anuncios, setAnunciosState] = useState<Anuncio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncSource, setSyncSource] = useState<string | null>(null);
 
   const processData = (jsonData: any[][]) => {
-    if (jsonData.length < 2) return [];
-    const headers = jsonData[0].map(h => String(h).toLowerCase().trim().replace(/^["']|["']$/g, ''));
+    if (!jsonData || jsonData.length < 2) return [];
+    const headers = jsonData[0].map(h => String(h || '').toLowerCase().trim().replace(/^["']|["']$/g, ''));
     
     const idx = {
       data: headers.findIndex(h => h.includes('data')),
@@ -36,6 +42,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       inicio: headers.findIndex(h => h.includes('inicio') || h.includes('início')),
       fim: headers.findIndex(h => h.includes('fim'))
     };
+
+    // Se não encontrar colunas básicas, o arquivo pode estar mal formatado
+    if (idx.data === -1 || idx.inicio === -1) return [];
 
     return jsonData.slice(1).map(v => {
       const hInicio = String(v[idx.inicio] || '').trim();
@@ -50,20 +59,28 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         fim: String(v[idx.fim] || '').trim(),
         turno: calcularTurnoPorHorario(hInicio)
       };
-    }).filter(a => a.data && a.inicio);
+    }).filter(a => a.data && a.inicio && a.data.includes('/'));
   };
 
   const syncFromRepository = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Tenta primeiro o Excel (.xlsx) por ser mais robusto, depois o CSV
       const extensions = ['xlsx', 'csv'];
-      let dataFound = false;
+      let bestData: Aula[] = [];
+      let bestSource: string | null = null;
 
+      // Percorre todas as extensões possíveis e tenta processar
       for (const ext of extensions) {
         try {
-          const res = await fetch(`/csv/aulas.${ext}?t=${Date.now()}`);
+          const fileName = `aulas.${ext}`;
+          const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
+          
           if (!res.ok) continue;
+
+          // Verifica se o conteúdo é HTML (comum em SPAs quando o arquivo não existe e o servidor redireciona para index.html)
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) continue;
 
           const arrayBuffer = await res.arrayBuffer();
           const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
@@ -71,25 +88,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
           
           const processed = processData(jsonData as any[][]);
-          if (processed.length > 0) {
-            setAulas(processed);
-            localStorage.setItem('senai_aulas_v2', JSON.stringify(processed));
-            dataFound = true;
-            console.log(`Sincronizado com sucesso via .${ext}`);
-            break;
+          
+          // Heurística: se este arquivo tem mais registros válidos, consideramos ele o "mais correto"
+          if (processed.length > bestData.length) {
+            bestData = processed;
+            bestSource = fileName;
           }
         } catch (e) {
-          console.warn(`Falha ao tentar ler aulas.${ext}`, e);
+          console.warn(`Erro ao processar arquivo.${ext}:`, e);
         }
       }
 
-      if (!dataFound) {
-        throw new Error("Nenhum arquivo de dados (xlsx ou csv) encontrado na pasta /csv/");
+      if (bestData.length > 0) {
+        setAulas(bestData);
+        setSyncSource(bestSource);
+        localStorage.setItem('senai_aulas_v2', JSON.stringify(bestData));
+        localStorage.setItem('senai_sync_source', bestSource || '');
+      } else {
+        throw new Error("Nenhum dado de aula válido encontrado nos arquivos da pasta /csv/.");
       }
     } catch (e: any) {
       setError(e.message);
       const saved = localStorage.getItem('senai_aulas_v2');
-      if (saved) setAulas(JSON.parse(saved));
+      if (saved) {
+        setAulas(JSON.parse(saved));
+        setSyncSource(localStorage.getItem('senai_sync_source'));
+      }
     } finally {
       setLoading(false);
     }
@@ -100,7 +124,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
     
     syncFromRepository();
-    // Auto-sync a cada 5 minutos
     const interval = setInterval(syncFromRepository, 300000);
     return () => clearInterval(interval);
   }, [syncFromRepository]);
@@ -134,6 +157,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if(confirm("Deseja apagar todos os dados locais?")) {
       setAulas([]);
       localStorage.removeItem('senai_aulas_v2');
+      setSyncSource(null);
     }
   };
 
@@ -150,8 +174,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       aulas, anuncios, loading, error, 
       addAula, updateAulasFromCSV, updateAula, deleteAula, 
       clearAulas, addAnuncio, deleteAnuncio,
-      // @ts-ignore - Estendendo o tipo em tempo de execução para o botão de sync
-      syncFromRepository 
+      syncFromRepository,
+      syncSource
     }}>
       {children}
     </DataContext.Provider>

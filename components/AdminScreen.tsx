@@ -1,11 +1,11 @@
 
 import React, { useState, useContext, useMemo } from 'react';
-import { DataContext } from '../context/DataContext';
+import { DataContext, ExtendedDataContextType } from '../context/DataContext';
 import { Aula } from '../types';
 import { XIcon, UploadCloudIcon, FileTextIcon, TrashIcon, LogOutIcon, CameraIcon, SettingsIcon, ClockIcon } from './Icons';
 
 const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-    const context = useContext(DataContext);
+    const context = useContext(DataContext) as ExtendedDataContextType;
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
@@ -31,12 +31,8 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
     if (!context) return null;
 
-    // @ts-ignore - Acesso à função estendida no DataProvider
     const handleSync = () => {
-        if (context.syncFromRepository) {
-            // @ts-ignore
-            context.syncFromRepository();
-        }
+        context.syncFromRepository();
     };
 
     return (
@@ -48,11 +44,17 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         <span className="text-[10px] font-bold text-[#ff6600] tracking-[0.4em] uppercase opacity-60">Sincronização com Repositório</span>
                     </div>
                 </div>
-                <div className="flex gap-4 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto items-center">
+                    {context.syncSource && (
+                        <div className="flex flex-col items-end mr-2">
+                             <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Arquivo Atual</span>
+                             <span className="text-[10px] font-bold text-[#ff6600] uppercase tracking-tighter bg-[#ff6600]/5 px-2 py-0.5 rounded border border-[#ff6600]/10">{context.syncSource}</span>
+                        </div>
+                    )}
                     <button 
                         onClick={handleSync} 
                         disabled={context.loading} 
-                        className="flex-1 md:flex-none bg-[#ff6600] text-white px-6 md:px-8 py-3 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-3 hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95 disabled:opacity-50"
+                        className="w-full md:w-auto bg-[#ff6600] text-white px-6 md:px-8 py-3 rounded-2xl font-black uppercase text-[10px] md:text-xs flex items-center justify-center gap-3 hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95 disabled:opacity-50"
                     >
                         <UploadCloudIcon className={`w-4 h-4 md:w-5 md:h-5 ${context.loading ? 'animate-bounce' : ''}`} /> 
                         {context.loading ? "SINCRONIZANDO..." : "BUSCAR NOVOS DADOS"}
@@ -62,6 +64,16 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     </button>
                 </div>
             </header>
+
+            {context.error && (
+                <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white font-black">!</div>
+                    <div>
+                        <p className="text-xs font-black uppercase tracking-widest">Erro de Sincronização</p>
+                        <p className="text-[10px] opacity-60">{context.error}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8 mb-8 md:mb-12">
                 <div className="bg-white/5 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-white/5 shadow-2xl flex flex-col gap-6">
@@ -88,7 +100,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 <div className="lg:col-span-3 bg-white/5 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-white/5 shadow-2xl flex flex-col gap-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex items-center gap-3"><FileTextIcon className="w-6 h-6 text-[#ff6600]"/><h2 className="text-sm font-black uppercase tracking-widest">Visualização de Aulas</h2></div>
-                        <p className="text-[9px] md:text-[10px] font-bold opacity-30 italic">O sistema busca automaticamente por 'aulas.xlsx' ou 'aulas.csv' na pasta /csv/.</p>
+                        <p className="text-[9px] md:text-[10px] font-bold opacity-30 italic">O sistema busca automaticamente o arquivo com mais dados entre 'aulas.xlsx' e 'aulas.csv' na pasta /csv/.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 bg-black/40 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-white/5">
                         <div className="flex flex-col gap-2"><span className="text-[9px] uppercase font-black opacity-30 tracking-widest">Filtrar Início</span><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm outline-none text-white font-bold" /></div>
@@ -97,7 +109,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 </div>
             </div>
 
-            <div className="rounded-[2rem] md:rounded-[3rem] border border-white/5 bg-white/5 overflow-hidden shadow-2xl">
+            <div className="rounded-[2rem] md:rounded-[3rem] border border-white/5 bg-white/5 overflow-hidden shadow-2xl mb-12">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-[10px] md:text-[11px] border-collapse min-w-[800px]">
                         <thead className="bg-white/5 uppercase font-black text-white/20 tracking-widest border-b border-white/5">
