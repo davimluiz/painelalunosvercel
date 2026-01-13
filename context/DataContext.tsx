@@ -64,8 +64,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           instrutorDetectado = temp;
       }
 
-      // Limpeza da Unidade Curricular: remove (ch:...) e espaços extras
-      let ucLimpa = String(v[idx.uc] || '').replace(/\(ch:.*?\)/gi, '').replace(/\s+/g, ' ').trim();
+      // Limpeza agressiva da Unidade Curricular: remove (CH:...), (ch 40h), etc.
+      // Remove qualquer conteúdo entre parênteses que comece com "CH"
+      let ucLimpa = String(v[idx.uc] || '')
+        .replace(/\s*\(\s*ch.*?\)/gi, '') // Remove (ch...) com ou sem dois pontos ou espaços
+        .replace(/\s+/g, ' ')
+        .trim();
 
       return {
         id: Math.random().toString(36).substr(2, 9),
