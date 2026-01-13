@@ -64,10 +64,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           instrutorDetectado = temp;
       }
 
-      // Limpeza agressiva da Unidade Curricular: remove (CH:...), (ch 40h), etc.
-      // Remove qualquer conteúdo entre parênteses que comece com "CH"
+      // Limpeza robusta da Unidade Curricular para remover padrões como (CH: 40), (ch40h), ch: 40h, etc.
       let ucLimpa = String(v[idx.uc] || '')
-        .replace(/\s*\(\s*ch.*?\)/gi, '') // Remove (ch...) com ou sem dois pontos ou espaços
+        .replace(/\s*\(\s*ch.*?\)/gi, '') // Remove conteúdo entre parênteses que começa com CH
+        .replace(/\s*ch[:\s].*?(\s|$)/gi, '') // Remove padrões como "ch: 40h" fora de parênteses
         .replace(/\s+/g, ' ')
         .trim();
 

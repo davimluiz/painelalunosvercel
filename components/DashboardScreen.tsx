@@ -73,27 +73,27 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                 </div>
             </div>
 
-            {/* DESTAQUE PRINCIPAL: TURMA (Aumentado) */}
-            <div className="flex-1 flex flex-col justify-center min-h-[130px] md:min-h-[160px] gap-2">
-                <h2 className={`text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.9] break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            {/* DESTAQUE PRINCIPAL: TURMA (Aumentado para destaque total) */}
+            <div className="flex-1 flex flex-col justify-center min-h-[140px] md:min-h-[170px] gap-2">
+                <h2 className={`text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.85] break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                     {formatText(aula.turma)}
                 </h2>
                 
                 {/* AMBIENTE (VTRIAS) ABAIXO DA TURMA */}
-                <div className="flex flex-col mt-2">
+                <div className="flex flex-col mt-4">
                     <div className="flex items-center gap-2 text-[#ff6600] font-bold text-sm md:text-base uppercase tracking-tight">
                         <BuildingIcon className="w-4 h-4 opacity-70" /> {formatText(aula.sala)}
                     </div>
-                    {/* INSTRUTOR ABAIXO DO AMBIENTE (Aumentado) */}
-                    <div className="flex items-center gap-2 opacity-60 font-black text-[13px] md:text-[15px] uppercase italic mt-1.5">
-                        <UserTieIcon className="w-4 h-4" /> {formatText(aula.instrutor)}
+                    {/* INSTRUTOR ABAIXO DO AMBIENTE (Aumentado para melhor leitura) */}
+                    <div className="flex items-center gap-2 opacity-70 font-black text-[15px] md:text-[18px] uppercase italic mt-2">
+                        <UserTieIcon className="w-4.5 h-4.5" /> {formatText(aula.instrutor)}
                     </div>
                 </div>
             </div>
 
             <div className="h-px w-full bg-[#ff6600]/10 my-1"></div>
 
-            {/* Unidade Curricular */}
+            {/* Unidade Curricular - Limpa no DataContext */}
             <div className="flex flex-col gap-1">
                 <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Unidade Curricular</span>
                 <span className={`text-[13px] md:text-base font-bold truncate ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
@@ -101,15 +101,15 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                 </span>
             </div>
 
-            {/* Horário na base - Apenas Início e Fim */}
-            <div className="mt-2 flex justify-between items-center bg-[#ff6600] rounded-2xl p-4 md:p-6 shadow-lg shadow-orange-500/20">
+            {/* Horário na base - Reduzido e Simplificado */}
+            <div className="mt-2 flex justify-between items-center bg-[#ff6600] rounded-2xl p-3 md:p-4 shadow-lg shadow-orange-500/20">
                 <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Horário de Aula</span>
-                    <div className="flex items-center gap-2 font-black text-2xl md:text-3xl text-white tracking-tighter">
-                         {aula.inicio} — {aula.fim}
+                    <span className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-0.5">Horário</span>
+                    <div className="flex items-center gap-2 font-black text-lg md:text-xl text-white tracking-tighter">
+                         {aula.inicio} às {aula.fim}
                     </div>
                 </div>
-                <ClockIcon className="w-8 h-8 md:w-10 md:h-10 text-white/50" />
+                <ClockIcon className="w-5 h-5 md:w-6 md:h-6 text-white/50" />
             </div>
         </div>
     );
