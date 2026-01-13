@@ -55,47 +55,61 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
 
 const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => {
     const colors = [
-        'from-orange-500 to-orange-600 shadow-orange-500/20',
-        'from-blue-500 to-blue-600 shadow-blue-500/20',
-        'from-purple-500 to-purple-600 shadow-purple-500/20',
-        'from-emerald-500 to-emerald-600 shadow-emerald-500/20'
+        'from-slate-800 to-slate-900 border-white/10', // Neutro elegante para destacar o texto
+        'from-zinc-800 to-zinc-900 border-white/10'
     ];
+    // Usando cores mais sóbrias no fundo para o texto do Ambiente (laranja) brilhar
     const colorClass = colors[index % colors.length];
 
     return (
-        <div className={`relative overflow-hidden rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-6 shadow-2xl transition-all duration-500 hover:scale-[1.02] flex flex-col gap-3 md:gap-4 border border-white/10 bg-gradient-to-br ${colorClass} text-white`}>
-            <div className="absolute top-4 right-4 md:right-6 bg-white/20 backdrop-blur-md px-2 md:px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-tighter border border-white/10">
+        <div className={`relative overflow-hidden rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-7 shadow-2xl transition-all duration-500 hover:scale-[1.03] flex flex-col gap-4 border bg-gradient-to-br ${colorClass} text-white`}>
+            {/* Tag de Turno discreta */}
+            <div className="absolute top-4 right-6 bg-white/5 backdrop-blur-md px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.2em] border border-white/10 opacity-60">
                 {aula.turno}
             </div>
-            <div className="space-y-1">
-                <h2 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none drop-shadow-md">
-                    {aula.sala.split('-')[0].trim()}
+
+            <div className="space-y-0.5 mt-2">
+                <div className="flex items-center gap-2 text-[#ff6600] font-black text-[9px] uppercase tracking-[0.3em] mb-1">
+                    <BuildingIcon className="w-3 h-3" /> Ambiente
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter leading-[0.9] text-white break-words drop-shadow-2xl">
+                    {aula.sala}
                 </h2>
-                <div className="flex items-center gap-2 opacity-80">
-                    <BuildingIcon className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                    <span className="text-[10px] md:text-[11px] font-bold truncate uppercase">{aula.sala.split('-').slice(1).join('-').trim() || 'Ambiente Educacional'}</span>
-                </div>
             </div>
-            <div className="h-px w-full bg-white/20 my-1"></div>
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-                <div className="flex flex-col gap-0.5 md:gap-1">
-                    <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold opacity-60 uppercase"><UserTieIcon className="w-2.5 h-2.5 md:w-3 md:h-3"/> Instrutor</div>
-                    <span className="text-[10px] md:text-xs font-black truncate leading-tight">{aula.instrutor}</span>
-                </div>
-                <div className="flex flex-col gap-0.5 md:gap-1 items-end text-right">
-                    <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-bold opacity-60 uppercase">Turma <UsersIcon className="w-2.5 h-2.5 md:w-3 md:h-3"/></div>
-                    <span className="text-[10px] md:text-xs font-black truncate leading-tight">{aula.turma}</span>
-                </div>
-            </div>
-            <div className="mt-auto flex justify-between items-center bg-black/10 rounded-xl md:rounded-2xl p-2 md:p-3 border border-white/5">
+
+            <div className="h-px w-full bg-white/10 my-2"></div>
+
+            <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col">
-                    <span className="text-[7px] md:text-[8px] font-black opacity-50 uppercase tracking-widest">Horário</span>
-                    <div className="flex items-center gap-1.5 font-black text-xs md:text-sm">
-                        <ClockIcon className="w-3 h-3 md:w-3.5 md:h-3.5" /> {aula.inicio} — {aula.fim}
+                    <span className="text-[8px] font-black opacity-30 uppercase tracking-widest mb-1">Unidade Curricular</span>
+                    <span className="text-xs font-bold truncate text-white/80">{aula.unidade_curricular || 'Não informada'}</span>
+                </div>
+                
+                <div className="flex justify-between items-end gap-2">
+                    <div className="flex flex-col flex-1">
+                        <div className="flex items-center gap-1.5 text-[8px] font-black opacity-30 uppercase tracking-widest mb-1">
+                            <UserTieIcon className="w-2.5 h-2.5"/> Instrutor
+                        </div>
+                        <span className="text-[11px] font-black truncate text-white/60 italic">{aula.instrutor}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                         <div className="flex items-center gap-1.5 text-[8px] font-black opacity-30 uppercase tracking-widest mb-1">
+                             Turma <UsersIcon className="w-2.5 h-2.5"/>
+                        </div>
+                        <span className="text-[11px] font-black text-white/60">{aula.turma}</span>
                     </div>
                 </div>
-                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    <BookOpenIcon className="w-3.5 h-3.5 md:w-4 md:h-4 opacity-50" />
+            </div>
+
+            <div className="mt-4 flex justify-between items-center bg-[#ff6600]/10 rounded-2xl p-4 border border-[#ff6600]/20">
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-[#ff6600] uppercase tracking-widest opacity-70">Horário da Aula</span>
+                    <div className="flex items-center gap-2 font-black text-base md:text-lg text-white">
+                         {aula.inicio} — {aula.fim}
+                    </div>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-[#ff6600] flex items-center justify-center shadow-lg shadow-[#ff6600]/20">
+                    <ClockIcon className="w-5 h-5 text-white" />
                 </div>
             </div>
         </div>
@@ -155,12 +169,11 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         }
     }, [context?.aulas, context?.loading, currentShift]);
 
-    // Ajuste de itens por página baseado no tamanho da tela
     const [itemsPerPage, setItemsPerPage] = useState(8);
     useEffect(() => {
         const updateItems = () => {
             const hasAds = (context?.anuncios?.length || 0) > 0;
-            if (window.innerWidth < 768) setItemsPerPage(4); // Menos itens no celular para evitar scroll infinito
+            if (window.innerWidth < 768) setItemsPerPage(4);
             else if (hasAds) setItemsPerPage(6);
             else setItemsPerPage(8);
         };
@@ -188,7 +201,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
             
             <main className="flex-1 p-4 md:p-8 flex flex-col lg:flex-row gap-8">
                 <div className={`flex-1 flex flex-col transition-all duration-500 ${hasAnuncios ? 'lg:w-2/3' : 'w-full'}`}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 auto-rows-min">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 auto-rows-min">
                         {visibleAulas.map((a, idx) => <ClassCard key={a.id} aula={a} index={idx} />)}
                     </div>
                     {filteredAulas.length === 0 && (
@@ -196,7 +209,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                             <div className="p-8 md:p-12 rounded-full border-2 md:border-4 border-dashed border-white/20"><ClockIcon className="w-16 h-16 md:w-24 md:h-24 stroke-[1px]" /></div>
                             <div>
                                 <p className="text-xl md:text-2xl font-black uppercase tracking-[0.2em] md:tracking-[0.4em]">Sem atividades agora</p>
-                                <p className="text-[9px] md:text-[10px] mt-2 opacity-50 tracking-widest font-bold uppercase">Aguardando o próximo turno ou novos dados</p>
+                                <p className="text-[9px] md:text-[10px] mt-2 opacity-50 tracking-widest font-bold uppercase">Aguardando novos dados no CSV</p>
                             </div>
                         </div>
                     )}
@@ -228,7 +241,6 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                     <button onClick={toggleTheme} className="p-4 md:p-5 rounded-2xl md:rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 text-white hover:bg-[#ff6600] transition-all shadow-2xl">
                         {isDarkMode ? <SunIcon className="w-5 h-5 md:w-6 md:h-6" /> : <MoonIcon className="w-5 h-5 md:w-6 md:h-6" />}
                     </button>
-                    {/* BOTÃO DE ENGRENAGEM: Oculto em celulares (md:flex mostra apenas de 768px pra cima) */}
                     <button onClick={onAdminClick} className="hidden md:flex p-5 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 text-white hover:bg-[#ff6600] transition-all shadow-2xl group">
                         <SettingsIcon className="w-6 h-6 group-hover:rotate-180 transition-transform duration-700" />
                     </button>
