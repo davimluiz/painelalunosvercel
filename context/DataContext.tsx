@@ -32,13 +32,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const processCSVData = (jsonData: any[][]) => {
     if (!jsonData || jsonData.length < 2) return [];
     
-    // Normalização dos cabeçalhos
     const headers = jsonData[0].map(h => String(h || '').toLowerCase().trim().replace(/^["']|["']$/g, ''));
     
     const idx = {
       data: headers.findIndex(h => h.includes('data')),
-      // Ajuste crucial: O Ambiente (Sala) deve conter 'ambiente' ou 'sala', mas NÃO pode conter 'instrutor'
-      // Isso evita que a coluna 'Instrutor/Ambiente Reserva' seja confundida com a sala principal.
       sala: headers.findIndex(h => (h.includes('ambiente') || h.includes('sala')) && !h.includes('instrutor')),
       turma: headers.findIndex(h => h.includes('turma') || h.includes('tipo')),
       instrutor: headers.findIndex(h => h.includes('instrutor')),
@@ -47,12 +44,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fim: headers.findIndex(h => h.includes('fim'))
     };
 
-    // Fallback: Se não achou sala pela regra acima, tenta 'justificativa'
     if (idx.sala === -1) {
         idx.sala = headers.findIndex(h => h.includes('justificativa'));
     }
 
-    // Validação mínima obrigatória
     if (idx.data === -1 || idx.inicio === -1) {
         console.warn("Cabeçalhos obrigatórios não encontrados no CSV:", headers);
         return [];
@@ -63,13 +58,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       let salaDetectada = String(v[idx.sala] || 'Ambiente não definido').replace(/^["']|["']$/g, '').trim();
       let instrutorDetectado = String(v[idx.instrutor] || '').trim();
 
-      // Lógica solicitada: Se o valor em 'sala' não começar com VTRIA, mas o valor em 'instrutor' começar,
-      // significa que as colunas podem estar trocadas ou o dado correto está na outra coluna.
       if (!salaDetectada.toUpperCase().startsWith('VTRIA') && instrutorDetectado.toUpperCase().startsWith('VTRIA')) {
           const temp = salaDetectada;
           salaDetectada = instrutorDetectado;
           instrutorDetectado = temp;
       }
+
+      // Limpeza da Unidade Curricular: remove (ch:...) e espaços extras
+      let ucLimpa = String(v[idx.uc] || '').replace(/\(ch:.*?\)/gi, '').replace(/\s+/g, ' ').trim();
 
       return {
         id: Math.random().toString(36).substr(2, 9),
@@ -77,7 +73,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         sala: salaDetectada,
         turma: String(v[idx.turma] || '').trim(),
         instrutor: instrutorDetectado,
-        unidade_curricular: String(v[idx.uc] || '').trim(),
+        unidade_curricular: ucLimpa,
         inicio: hInicio,
         fim: String(v[idx.fim] || '').trim(),
         turno: calcularTurnoPorHorario(hInicio)
@@ -135,7 +131,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
     
     syncFromRepository();
-    const interval = setInterval(syncFromRepository, 300000); // 5 min
+    const interval = setInterval(syncFromRepository, 300000); 
     return () => clearInterval(interval);
   }, [syncFromRepository]);
 

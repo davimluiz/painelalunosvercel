@@ -73,30 +73,30 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                 </div>
             </div>
 
-            {/* DESTAQUE PRINCIPAL: TURMA */}
+            {/* DESTAQUE PRINCIPAL: TURMA (Aumentado conforme pedido) */}
             <div className="flex-1 flex flex-col justify-center min-h-[120px] md:min-h-[140px] gap-2">
-                <h2 className={`text-3xl md:text-4xl font-black uppercase tracking-tighter leading-tight break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <h2 className={`text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                     {formatText(aula.turma)}
                 </h2>
                 
                 {/* AMBIENTE (VTRIAS) ABAIXO DA TURMA */}
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-2 text-[#ff6600] font-bold text-[10px] md:text-xs uppercase tracking-tight">
+                    <div className="flex items-center gap-2 text-[#ff6600] font-bold text-xs md:text-sm uppercase tracking-tight">
                         <BuildingIcon className="w-3.5 h-3.5 opacity-70" /> {formatText(aula.sala)}
                     </div>
-                    {/* INSTRUTOR ABAIXO DO AMBIENTE */}
-                    <div className="flex items-center gap-2 opacity-40 font-black text-[9px] md:text-[10px] uppercase italic mt-1">
-                        <UserTieIcon className="w-3 h-3" /> {formatText(aula.instrutor)}
+                    {/* INSTRUTOR ABAIXO DO AMBIENTE (Aumentado conforme pedido) */}
+                    <div className="flex items-center gap-2 opacity-50 font-black text-[11px] md:text-xs uppercase italic mt-1.5">
+                        <UserTieIcon className="w-3.5 h-3.5" /> {formatText(aula.instrutor)}
                     </div>
                 </div>
             </div>
 
             <div className="h-px w-full bg-[#ff6600]/10 my-1"></div>
 
-            {/* Unidade Curricular */}
+            {/* Unidade Curricular (Limpada via Context) */}
             <div className="flex flex-col gap-1">
                 <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Unidade Curricular</span>
-                <span className={`text-[11px] md:text-xs font-bold truncate ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+                <span className={`text-[12px] md:text-sm font-bold truncate ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
                     {aula.unidade_curricular || 'Atividade SENAI'}
                 </span>
             </div>
@@ -105,7 +105,7 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
             <div className="mt-2 flex justify-between items-center bg-[#ff6600] rounded-2xl p-4 md:p-5 shadow-lg shadow-orange-500/20">
                 <div className="flex flex-col">
                     <span className="text-[8px] font-black text-white/60 uppercase tracking-widest">Horário de Aula</span>
-                    <div className="flex items-center gap-2 font-black text-lg md:text-xl text-white">
+                    <div className="flex items-center gap-2 font-black text-xl md:text-2xl text-white tracking-tighter">
                          {aula.inicio} — {aula.fim}
                     </div>
                 </div>
