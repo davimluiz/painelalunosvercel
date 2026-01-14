@@ -58,7 +58,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           instrutorDetectado = temp;
       }
 
-      // Regex para remover (CH:...), (ch...), [CH...] etc
       let ucLimpa = String(v[idx.uc] || '')
         .replace(/\s*[\(\[].*?ch.*?[\)\]]/gi, '')
         .replace(/\s+ch[:\s].*?(\s|$)/gi, '')
@@ -107,22 +106,68 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const savedAnuncios = localStorage.getItem('senai_anuncios_v2');
     if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
-    syncFromRepository();
-    const interval = setInterval(syncFromRepository, 300000); 
-    return () => clearInterval(interval);
+    
+    const savedAulas = localStorage.getItem('senai_aulas_v2');
+    if (savedAulas) {
+      setAulas(JSON.parse(savedAulas));
+      setLoading(false);
+    } else {
+      syncFromRepository();
+    }
   }, [syncFromRepository]);
 
-  const addAula = (aula: Omit<Aula, 'id'>) => setAulas(prev => [...prev, { ...aula, id: Date.now().toString() }]);
+  const addAula = (aula: Omit<Aula, 'id'>) => {
+    setAulas(prev => {
+      const newAulas = [...prev, { ...aula, id: Date.now().toString() }];
+      localStorage.setItem('senai_aulas_v2', JSON.stringify(newAulas));
+      return newAulas;
+    });
+  };
+
   const updateAulasFromCSV = (data: Omit<Aula, 'id'>[]) => {
     const novas = data.map(d => ({ ...d, id: Math.random().toString(36).substr(2, 9) }));
     setAulas(novas);
     localStorage.setItem('senai_aulas_v2', JSON.stringify(novas));
   };
-  const updateAula = async (id: string, d: Partial<Aula>) => setAulas(prev => prev.map(a => a.id === id ? { ...a, ...d } : a));
-  const deleteAula = async (id: string) => setAulas(prev => prev.filter(a => a.id !== id));
-  const clearAulas = () => { if(confirm("Apagar dados locais?")) { setAulas([]); localStorage.removeItem('senai_aulas_v2'); } };
-  const addAnuncio = (n: Omit<Anuncio, 'id'>) => setAnunciosState(prev => [...prev, { ...n, id: Date.now().toString() }]);
-  const deleteAnuncio = (id: string) => setAnunciosState(prev => prev.filter(a => a.id !== id));
+
+  const updateAula = async (id: string, d: Partial<Aula>) => {
+    setAulas(prev => {
+      const newAulas = prev.map(a => a.id === id ? { ...a, ...d } : a);
+      localStorage.setItem('senai_aulas_v2', JSON.stringify(newAulas));
+      return newAulas;
+    });
+  };
+
+  const deleteAula = async (id: string) => {
+    setAulas(prev => {
+      const newAulas = prev.filter(a => a.id !== id);
+      localStorage.setItem('senai_aulas_v2', JSON.stringify(newAulas));
+      return newAulas;
+    });
+  };
+
+  const clearAulas = () => { 
+    if(confirm("Apagar dados locais?")) { 
+      setAulas([]); 
+      localStorage.removeItem('senai_aulas_v2'); 
+    } 
+  };
+
+  const addAnuncio = (n: Omit<Anuncio, 'id'>) => {
+    setAnunciosState(prev => {
+      const newAnuncios = [...prev, { ...n, id: Date.now().toString() }];
+      localStorage.setItem('senai_anuncios_v2', JSON.stringify(newAnuncios));
+      return newAnuncios;
+    });
+  };
+
+  const deleteAnuncio = (id: string) => {
+    setAnunciosState(prev => {
+      const newAnuncios = prev.filter(a => a.id !== id);
+      localStorage.setItem('senai_anuncios_v2', JSON.stringify(newAnuncios));
+      return newAnuncios;
+    });
+  };
 
   return (
     <DataContext.Provider value={{ 
