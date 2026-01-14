@@ -10,19 +10,18 @@ const MaximizeIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
 );
 
+const SunHorizonIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 10V2"/><path d="m4.93 10.93 1.41-1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41-1.41"/><path d="M22 22H2"/><path d="m8 22 4-10 4 10"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>
+);
+
 const normalizeTurno = (t: string | undefined) => {
     if (!t) return '';
     return t.toLowerCase().trim();
 };
 
-const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ currentShift, onFullscreen }) => {
+const Header: React.FC<{ onFullscreen: () => void }> = ({ onFullscreen }) => {
     const { formattedDate, formattedTime } = useCurrentTime();
     const { isDarkMode } = useTheme();
-    
-    let shiftColor = 'text-white/80';
-    if (currentShift === 'Matutino') shiftColor = 'text-yellow-400';
-    if (currentShift === 'Vespertino') shiftColor = 'text-orange-400';
-    if (currentShift === 'Noturno') shiftColor = 'text-indigo-400';
 
     return (
         <header className={`flex-none p-4 flex flex-col md:flex-row justify-between items-center px-4 md:px-8 md:h-24 z-20 relative border-b transition-colors duration-500 gap-4 md:gap-0 ${isDarkMode ? 'bg-black/40 backdrop-blur-xl border-white/5 text-white' : 'bg-white/70 backdrop-blur-xl border-slate-200 text-slate-800'}`}>
@@ -40,13 +39,13 @@ const Header: React.FC<{ currentShift: string; onFullscreen: () => void }> = ({ 
                 <span className={`text-[10px] md:text-[11px] font-medium tracking-[0.1em] uppercase opacity-40`}>{formattedDate}</span>
             </div>
 
-            <div className="flex items-center gap-3">
-                <div className={`flex flex-col items-end pr-4 border-r border-white/10`}>
-                    <span className="text-[8px] font-bold opacity-30 uppercase tracking-widest">Turno Agora</span>
-                    <span className={`text-xs md:text-sm font-black uppercase tracking-tighter ${shiftColor}`}>{currentShift}</span>
+            <div className="flex items-center gap-4">
+                <div className="hidden md:flex flex-col items-end pr-4 border-r border-white/10">
+                    <span className="text-[8px] font-black opacity-30 uppercase tracking-[0.2em]">Vitória</span>
+                    <span className="text-xs font-black uppercase text-[#ff6600]">Unidade Integrada</span>
                 </div>
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#ff6600]/10 flex items-center justify-center border border-[#ff6600]/20">
-                    <ClockIcon className="w-4 h-4 md:w-5 md:h-5 text-[#ff6600]" />
+                <div className="w-10 h-10 rounded-full bg-[#ff6600]/10 flex items-center justify-center border border-[#ff6600]/20">
+                    <BuildingIcon className="w-5 h-5 text-[#ff6600]" />
                 </div>
             </div>
         </header>
@@ -62,8 +61,6 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
 
     return (
         <div className={`relative overflow-hidden rounded-2xl p-5 shadow-xl transition-all duration-300 hover:scale-[1.01] flex flex-col gap-3 border ${isDarkMode ? 'bg-[#1a1b1e] border-white/5' : 'bg-white border-slate-200'}`}>
-            
-            {/* Header: Turma e Badge Compacto de Turno/Horário */}
             <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#ff6600] flex items-center justify-center shadow-lg shadow-orange-600/20">
@@ -73,7 +70,6 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                         <h2 className={`text-lg md:text-xl font-black uppercase tracking-tight leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             {formatText(aula.turma)}
                         </h2>
-                        {/* Horário Compacto Integrado */}
                         <div className="flex items-center gap-1.5 mt-1 text-[#ff6600] opacity-80">
                             <ClockIcon className="w-3 h-3" />
                             <span className="text-[10px] font-black tracking-tighter uppercase">{aula.inicio} — {aula.fim}</span>
@@ -85,9 +81,7 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                 </div>
             </div>
 
-            {/* Linhas de Informação (Cinzas) */}
             <div className="space-y-1.5">
-                {/* Ambiente */}
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
                     <BuildingIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
                     <span className={`text-[10px] md:text-[11px] font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
@@ -95,7 +89,6 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                     </span>
                 </div>
 
-                {/* Instrutor */}
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
                     <UserTieIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
                     <span className={`text-[10px] md:text-[11px] font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
@@ -103,7 +96,6 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                     </span>
                 </div>
 
-                {/* Unidade Curricular */}
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
                     <BookOpenIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
                     <span className={`text-[10px] md:text-[11px] font-bold uppercase truncate ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
@@ -130,24 +122,15 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         return () => document.removeEventListener('fullscreenchange', handleFS);
     }, []);
 
+    // Detecção automática inicial baseada no horário
     useEffect(() => {
-        const update = () => {
-            const now = new Date();
-            const h = now.getHours();
-            const m = now.getMinutes();
-            const totalMin = (h * 60) + m;
-
-            if (totalMin >= 360 && totalMin <= 690) setCurrentShift('Matutino');
-            else if (totalMin >= 691 && totalMin <= 1050) setCurrentShift('Vespertino');
-            else if (totalMin >= 1051 && totalMin <= 1320) setCurrentShift('Noturno');
-            else {
-                if (h < 6) setCurrentShift('Matutino');
-                else setCurrentShift('Noturno');
-            }
+        const detectShift = () => {
+            const h = new Date().getHours();
+            if (h >= 6 && h < 12) return 'Matutino';
+            if (h >= 12 && h < 18) return 'Vespertino';
+            return 'Noturno';
         };
-        update();
-        const interval = setInterval(update, 60000);
-        return () => clearInterval(interval);
+        setCurrentShift(detectShift());
     }, []);
 
     useEffect(() => {
@@ -183,10 +166,40 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
     const hasAnuncios = (context.anuncios?.length || 0) > 0;
 
+    const turnos = [
+        { id: 'Matutino', icon: SunIcon },
+        { id: 'Vespertino', icon: SunHorizonIcon },
+        { id: 'Noturno', icon: MoonIcon }
+    ];
+
     return (
         <div className={`min-h-screen w-screen overflow-x-hidden flex flex-col transition-colors duration-1000 ${isDarkMode ? 'bg-[#0a0a0f] text-white' : 'bg-slate-50 text-slate-800'}`}>
-            <Header currentShift={currentShift} onFullscreen={() => document.documentElement.requestFullscreen()} />
+            <Header onFullscreen={() => document.documentElement.requestFullscreen()} />
             
+            {/* Seletor de Turno - Início da Main */}
+            <div className="flex justify-center pt-8 px-4">
+                <div className={`flex p-1.5 rounded-2xl md:rounded-[2rem] gap-2 border ${isDarkMode ? 'bg-[#16171d] border-white/5' : 'bg-white border-slate-200 shadow-lg'}`}>
+                    {turnos.map((t) => {
+                        const Icon = t.icon;
+                        const active = currentShift === t.id;
+                        return (
+                            <button
+                                key={t.id}
+                                onClick={() => setCurrentShift(t.id)}
+                                className={`flex items-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] transition-all duration-500 font-black uppercase tracking-widest text-[10px] md:text-xs ${
+                                    active 
+                                    ? 'bg-[#ff6600] text-white shadow-lg shadow-orange-600/40 scale-105 z-10' 
+                                    : 'text-white/30 hover:text-white/60'
+                                }`}
+                            >
+                                <Icon className={`w-4 h-4 md:w-5 md:h-5 ${active ? 'animate-pulse' : ''}`} />
+                                {t.id}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
             <main className="flex-1 p-4 md:p-8 flex flex-col lg:flex-row gap-8">
                 <div className={`flex-1 flex flex-col transition-all duration-500 ${hasAnuncios ? 'lg:w-2/3' : 'w-full'}`}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6 auto-rows-min">
@@ -195,7 +208,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                     {filteredAulas.length === 0 && (
                         <div className="flex-1 flex items-center justify-center opacity-10 flex-col gap-6 text-center py-20">
                             <ClockIcon className="w-16 h-16 md:w-24 md:h-24 stroke-[1px]" />
-                            <p className="text-xl font-black uppercase tracking-widest">Sem atividades agendadas para este turno</p>
+                            <p className="text-xl font-black uppercase tracking-widest">Sem atividades agendadas para o turno {currentShift}</p>
                         </div>
                     )}
                     {filteredAulas.length > itemsPerPage && (
@@ -208,7 +221,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                 </div>
 
                 {hasAnuncios && (
-                    <aside className="hidden lg:block w-1/3 h-[calc(100vh-160px)] rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative">
+                    <aside className="hidden lg:block w-1/3 h-[calc(100vh-280px)] rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative mt-0">
                          {context.anuncios.map((ad, idx) => {
                              const isVisible = idx === (Math.floor(Date.now()/10000) % context.anuncios.length);
                              return (
