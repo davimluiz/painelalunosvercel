@@ -2,7 +2,6 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Aula, Anuncio, DataContextType } from '../types';
 
-// Declaração global para a biblioteca SheetJS carregada via CDN no index.html
 declare const XLSX: any;
 
 export interface ExtendedDataContextType extends DataContextType {
@@ -44,14 +43,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fim: headers.findIndex(h => h.includes('fim'))
     };
 
-    if (idx.sala === -1) {
-        idx.sala = headers.findIndex(h => h.includes('justificativa'));
-    }
+    if (idx.sala === -1) idx.sala = headers.findIndex(h => h.includes('justificativa'));
 
-    if (idx.data === -1 || idx.inicio === -1) {
-        console.warn("Cabeçalhos obrigatórios não encontrados no CSV:", headers);
-        return [];
-    }
+    if (idx.data === -1 || idx.inicio === -1) return [];
 
     return jsonData.slice(1).map(v => {
       const hInicio = String(v[idx.inicio] || '').trim();
@@ -64,10 +58,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           instrutorDetectado = temp;
       }
 
-      // Limpeza robusta da Unidade Curricular para remover padrões como (CH: 40), (ch40h), ch: 40h, etc.
+      // Regex para remover (CH:...), (ch...), [CH...] etc
       let ucLimpa = String(v[idx.uc] || '')
-        .replace(/\s*\(\s*ch.*?\)/gi, '') // Remove conteúdo entre parênteses que começa com CH
-        .replace(/\s*ch[:\s].*?(\s|$)/gi, '') // Remove padrões como "ch: 40h" fora de parênteses
+        .replace(/\s*[\(\[].*?ch.*?[\)\]]/gi, '')
+        .replace(/\s+ch[:\s].*?(\s|$)/gi, '')
         .replace(/\s+/g, ' ')
         .trim();
 
@@ -91,40 +85,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const fileName = 'aulas.csv';
       const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
-      
-      if (!res.ok) {
-        throw new Error(`Arquivo ${fileName} não encontrado no servidor.`);
-      }
-
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('text/html')) {
-        throw new Error("O servidor retornou uma página HTML em vez do CSV.");
-      }
-
+      if (!res.ok) throw new Error("Arquivo não encontrado.");
       const text = await res.text();
       const workbook = XLSX.read(text, { type: 'string' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+      const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
       const processed = processCSVData(jsonData as any[][]);
-      
       if (processed.length > 0) {
         setAulas(processed);
         setSyncSource(fileName);
         localStorage.setItem('senai_aulas_v2', JSON.stringify(processed));
-        localStorage.setItem('senai_sync_source', fileName);
-      } else {
-        throw new Error("O arquivo aulas.csv não contém dados compatíveis com o padrão VTRIA.");
       }
     } catch (e: any) {
-      console.error("Sync Error:", e);
       setError(e.message);
       const saved = localStorage.getItem('senai_aulas_v2');
-      if (saved) {
-        setAulas(JSON.parse(saved));
-        setSyncSource(localStorage.getItem('senai_sync_source'));
-      }
+      if (saved) setAulas(JSON.parse(saved));
     } finally {
       setLoading(false);
     }
@@ -133,52 +107,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const savedAnuncios = localStorage.getItem('senai_anuncios_v2');
     if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
-    
     syncFromRepository();
     const interval = setInterval(syncFromRepository, 300000); 
     return () => clearInterval(interval);
   }, [syncFromRepository]);
 
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('senai_anuncios_v2', JSON.stringify(anuncios));
-    }
-  }, [anuncios, loading]);
-
-  const addAula = (aula: Omit<Aula, 'id'>) => {
-    const nova = { ...aula, id: Date.now().toString() };
-    setAulas(prev => [...prev, nova]);
-  };
-
+  const addAula = (aula: Omit<Aula, 'id'>) => setAulas(prev => [...prev, { ...aula, id: Date.now().toString() }]);
   const updateAulasFromCSV = (data: Omit<Aula, 'id'>[]) => {
-    const novasAulas = data.map(d => ({ ...d, id: Math.random().toString(36).substr(2, 9) }));
-    setAulas(novasAulas);
-    localStorage.setItem('senai_aulas_v2', JSON.stringify(novasAulas));
+    const novas = data.map(d => ({ ...d, id: Math.random().toString(36).substr(2, 9) }));
+    setAulas(novas);
+    localStorage.setItem('senai_aulas_v2', JSON.stringify(novas));
   };
-
-  const updateAula = async (id: string, aulaData: Partial<Aula>) => {
-    setAulas(prev => prev.map(a => a.id === id ? { ...a, ...aulaData } : a));
-  };
-
-  const deleteAula = async (id: string) => {
-    setAulas(prev => prev.filter(a => a.id !== id));
-  };
-
-  const clearAulas = () => {
-    if(confirm("Deseja apagar todos os dados locais?")) {
-      setAulas([]);
-      localStorage.removeItem('senai_aulas_v2');
-      setSyncSource(null);
-    }
-  };
-
-  const addAnuncio = (novoAnuncio: Omit<Anuncio, 'id'>) => {
-    setAnunciosState(prev => [...prev, { ...novoAnuncio, id: Date.now().toString() }]);
-  };
-
-  const deleteAnuncio = (id: string) => {
-    setAnunciosState(prev => prev.filter(a => a.id !== id));
-  };
+  const updateAula = async (id: string, d: Partial<Aula>) => setAulas(prev => prev.map(a => a.id === id ? { ...a, ...d } : a));
+  const deleteAula = async (id: string) => setAulas(prev => prev.filter(a => a.id !== id));
+  const clearAulas = () => { if(confirm("Apagar dados locais?")) { setAulas([]); localStorage.removeItem('senai_aulas_v2'); } };
+  const addAnuncio = (n: Omit<Anuncio, 'id'>) => setAnunciosState(prev => [...prev, { ...n, id: Date.now().toString() }]);
+  const deleteAnuncio = (id: string) => setAnunciosState(prev => prev.filter(a => a.id !== id));
 
   return (
     <DataContext.Provider value={{ 

@@ -61,55 +61,61 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
     };
 
     return (
-        <div className={`relative overflow-hidden rounded-[2rem] p-6 md:p-8 shadow-2xl transition-all duration-500 hover:scale-[1.02] flex flex-col gap-4 border ${isDarkMode ? 'bg-gradient-to-br from-zinc-900 to-black border-white/10 shadow-black/40' : 'bg-white border-slate-200 shadow-slate-200'}`}>
+        <div className={`relative overflow-hidden rounded-2xl p-5 shadow-xl transition-all duration-300 hover:scale-[1.01] flex flex-col gap-3 border ${isDarkMode ? 'bg-[#1a1b1e] border-white/5' : 'bg-white border-slate-200'}`}>
             
-            {/* Cabeçalho do Card */}
-            <div className="flex justify-between items-start mb-1">
-                <div className="flex items-center gap-2 text-[#ff6600] font-black text-[9px] uppercase tracking-[0.3em]">
-                    <UsersIcon className="w-3.5 h-3.5" /> Informações da Turma
+            {/* Header: Turma e Turno */}
+            <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#ff6600] flex items-center justify-center shadow-lg shadow-orange-600/20">
+                        <UsersIcon className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className={`text-lg md:text-xl font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {formatText(aula.turma)}
+                    </h2>
                 </div>
-                <div className="bg-[#ff6600]/10 text-[#ff6600] px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter border border-[#ff6600]/20">
+                <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border ${isDarkMode ? 'bg-zinc-800/50 border-white/5 text-white/40' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
                     {aula.turno}
                 </div>
             </div>
 
-            {/* DESTAQUE PRINCIPAL: TURMA (Aumentado para destaque total) */}
-            <div className="flex-1 flex flex-col justify-center min-h-[140px] md:min-h-[170px] gap-2">
-                <h2 className={`text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.85] break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {formatText(aula.turma)}
-                </h2>
-                
-                {/* AMBIENTE (VTRIAS) ABAIXO DA TURMA */}
-                <div className="flex flex-col mt-4">
-                    <div className="flex items-center gap-2 text-[#ff6600] font-bold text-sm md:text-base uppercase tracking-tight">
-                        <BuildingIcon className="w-4 h-4 opacity-70" /> {formatText(aula.sala)}
-                    </div>
-                    {/* INSTRUTOR ABAIXO DO AMBIENTE (Aumentado para melhor leitura) */}
-                    <div className="flex items-center gap-2 opacity-70 font-black text-[15px] md:text-[18px] uppercase italic mt-2">
-                        <UserTieIcon className="w-4.5 h-4.5" /> {formatText(aula.instrutor)}
-                    </div>
+            {/* Linhas de Informação (Cinzas) */}
+            <div className="space-y-2">
+                {/* Ambiente */}
+                <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                    <BuildingIcon className="w-4 h-4 text-[#ff6600] opacity-80" />
+                    <span className={`text-[11px] md:text-xs font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
+                        {formatText(aula.sala)}
+                    </span>
+                </div>
+
+                {/* Instrutor */}
+                <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                    <UserTieIcon className="w-4 h-4 text-[#ff6600] opacity-80" />
+                    <span className={`text-[11px] md:text-xs font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
+                        {formatText(aula.instrutor)}
+                    </span>
+                </div>
+
+                {/* Unidade Curricular */}
+                <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                    <BookOpenIcon className="w-4 h-4 text-[#ff6600] opacity-80" />
+                    <span className={`text-[11px] md:text-xs font-bold uppercase truncate ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
+                        {aula.unidade_curricular || 'Atividade SENAI'}
+                    </span>
                 </div>
             </div>
 
-            <div className="h-px w-full bg-[#ff6600]/10 my-1"></div>
-
-            {/* Unidade Curricular - Limpa no DataContext */}
-            <div className="flex flex-col gap-1">
-                <span className="text-[8px] font-black opacity-30 uppercase tracking-widest">Unidade Curricular</span>
-                <span className={`text-[13px] md:text-base font-bold truncate ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
-                    {aula.unidade_curricular || 'Atividade SENAI'}
+            {/* Footer: Horário */}
+            <div className="mt-2 flex justify-between items-center pt-2 border-t border-white/5">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white/20' : 'text-slate-400'}`}>
+                    Horário
                 </span>
-            </div>
-
-            {/* Horário na base - Reduzido e Simplificado */}
-            <div className="mt-2 flex justify-between items-center bg-[#ff6600] rounded-2xl p-3 md:p-4 shadow-lg shadow-orange-500/20">
-                <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-white/70 uppercase tracking-widest mb-0.5">Horário</span>
-                    <div className="flex items-center gap-2 font-black text-lg md:text-xl text-white tracking-tighter">
-                         {aula.inicio} às {aula.fim}
-                    </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#ff6600]/10 border border-[#ff6600]/20">
+                    <ClockIcon className="w-4 h-4 text-[#ff6600]" />
+                    <span className="text-sm font-black text-[#ff6600] tracking-tighter">
+                         {aula.inicio} - {aula.fim}
+                    </span>
                 </div>
-                <ClockIcon className="w-5 h-5 md:w-6 md:h-6 text-white/50" />
             </div>
         </div>
     );
@@ -168,18 +174,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         }
     }, [context?.aulas, context?.loading, currentShift]);
 
-    const [itemsPerPage, setItemsPerPage] = useState(8);
-    useEffect(() => {
-        const updateItems = () => {
-            const hasAds = (context?.anuncios?.length || 0) > 0;
-            if (window.innerWidth < 768) setItemsPerPage(4);
-            else if (hasAds) setItemsPerPage(6);
-            else setItemsPerPage(8);
-        };
-        updateItems();
-        window.addEventListener('resize', updateItems);
-        return () => window.removeEventListener('resize', updateItems);
-    }, [context?.anuncios]);
+    const itemsPerPage = 8;
 
     useEffect(() => {
         const total = Math.ceil(filteredAulas.length / itemsPerPage);
@@ -188,7 +183,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
             const timer = setInterval(() => setPage(p => (p + 1) % total), 15000);
             return () => clearInterval(timer);
         }
-    }, [filteredAulas, page, itemsPerPage]);
+    }, [filteredAulas, page]);
 
     if (!context) return null;
 
@@ -200,16 +195,13 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
             
             <main className="flex-1 p-4 md:p-8 flex flex-col lg:flex-row gap-8">
                 <div className={`flex-1 flex flex-col transition-all duration-500 ${hasAnuncios ? 'lg:w-2/3' : 'w-full'}`}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-8 auto-rows-min">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6 auto-rows-min">
                         {visibleAulas.map((a, idx) => <ClassCard key={a.id} aula={a} index={idx} />)}
                     </div>
                     {filteredAulas.length === 0 && (
                         <div className="flex-1 flex items-center justify-center opacity-10 flex-col gap-6 text-center py-20">
-                            <div className="p-8 md:p-12 rounded-full border-2 md:border-4 border-dashed border-white/20"><ClockIcon className="w-16 h-16 md:w-24 md:h-24 stroke-[1px]" /></div>
-                            <div>
-                                <p className="text-xl md:text-2xl font-black uppercase tracking-[0.2em] md:tracking-[0.4em]">Sem atividades agora</p>
-                                <p className="text-[9px] md:text-[10px] mt-2 opacity-50 tracking-widest font-bold uppercase">Aguardando novos dados no CSV</p>
-                            </div>
+                            <ClockIcon className="w-16 h-16 md:w-24 md:h-24 stroke-[1px]" />
+                            <p className="text-xl font-black uppercase tracking-widest">Sem atividades agendadas para este turno</p>
                         </div>
                     )}
                     {filteredAulas.length > itemsPerPage && (
@@ -222,7 +214,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                 </div>
 
                 {hasAnuncios && (
-                    <aside className="hidden lg:block w-1/3 h-[calc(100vh-160px)] rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative">
+                    <aside className="hidden lg:block w-1/3 h-[calc(100vh-160px)] rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative">
                          {context.anuncios.map((ad, idx) => {
                              const isVisible = idx === (Math.floor(Date.now()/10000) % context.anuncios.length);
                              return (
@@ -237,11 +229,11 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
             {!isFullscreen && (
                 <div className="fixed bottom-6 right-6 flex gap-3 z-50">
-                    <button onClick={toggleTheme} className="p-4 md:p-5 rounded-2xl md:rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 text-white hover:bg-[#ff6600] transition-all shadow-2xl">
-                        {isDarkMode ? <SunIcon className="w-5 h-5 md:w-6 md:h-6" /> : <MoonIcon className="w-5 h-5 md:w-6 md:h-6" />}
+                    <button onClick={toggleTheme} className="p-4 rounded-2xl bg-white/5 backdrop-blur-2xl border border-white/10 text-white hover:bg-[#ff6600] transition-all shadow-2xl">
+                        {isDarkMode ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
                     </button>
-                    <button onClick={onAdminClick} className="hidden md:flex p-5 rounded-3xl bg-white/5 backdrop-blur-2xl border border-white/10 text-white hover:bg-[#ff6600] transition-all shadow-2xl group">
-                        <SettingsIcon className="w-6 h-6 group-hover:rotate-180 transition-transform duration-700" />
+                    <button onClick={onAdminClick} className="hidden md:flex p-4 rounded-2xl bg-white/5 backdrop-blur-2xl border border-white/10 text-white hover:bg-[#ff6600] transition-all shadow-2xl">
+                        <SettingsIcon className="w-6 h-6" />
                     </button>
                 </div>
             )}
