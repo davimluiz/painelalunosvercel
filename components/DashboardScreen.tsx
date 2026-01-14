@@ -59,8 +59,22 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
         return text.replace(/['"]/g, '').trim();
     };
 
+    const abrevSala = (sala: string) => {
+        // Remove prefixo VTRIA-X- e retorna o restante (ex: SALA-5107 ou LAB-5021)
+        return sala.replace(/^VTRIA-\d+-/i, '').trim();
+    };
+
+    const getHorarioFixo = (turno: string | undefined) => {
+        const t = normalizeTurno(turno);
+        if (t === 'matutino') return '7:00 as 11:30';
+        if (t === 'vespertino') return '13:00 as 17:30';
+        if (t === 'noturno') return '18:00 as 22:00';
+        return '';
+    };
+
     return (
         <div className={`relative overflow-hidden rounded-2xl p-5 shadow-xl transition-all duration-300 hover:scale-[1.01] flex flex-col gap-3 border ${isDarkMode ? 'bg-[#1a1b1e] border-white/5' : 'bg-white border-slate-200'}`}>
+            {/* Header: Turma e Sala Abreviada */}
             <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#ff6600] flex items-center justify-center shadow-lg shadow-orange-600/20">
@@ -70,9 +84,10 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                         <h2 className={`text-lg md:text-xl font-black uppercase tracking-tight leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             {formatText(aula.turma)}
                         </h2>
-                        <div className="flex items-center gap-1.5 mt-1 text-[#ff6600] opacity-80">
-                            <ClockIcon className="w-3 h-3" />
-                            <span className="text-[10px] font-black tracking-tighter uppercase">{aula.inicio} — {aula.fim}</span>
+                        {/* Sala Substituindo o Horário no Cabeçalho */}
+                        <div className="flex items-center gap-1.5 mt-1 text-[#ff6600] opacity-90">
+                            <ClockIcon className="w-3.5 h-3.5" />
+                            <span className="text-[11px] font-black tracking-widest uppercase">{abrevSala(aula.sala)}</span>
                         </div>
                     </div>
                 </div>
@@ -81,14 +96,9 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                 </div>
             </div>
 
+            {/* Linhas de Informação (Cinzas) */}
             <div className="space-y-1.5">
-                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                    <BuildingIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
-                    <span className={`text-[10px] md:text-[11px] font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
-                        {formatText(aula.sala)}
-                    </span>
-                </div>
-
+                {/* Instrutor */}
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
                     <UserTieIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
                     <span className={`text-[10px] md:text-[11px] font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
@@ -96,10 +106,19 @@ const ClassCard: React.FC<{ aula: Aula; index: number }> = ({ aula, index }) => 
                     </span>
                 </div>
 
+                {/* Unidade Curricular */}
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
                     <BookOpenIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
                     <span className={`text-[10px] md:text-[11px] font-bold uppercase truncate ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
                         {aula.unidade_curricular || 'Atividade SENAI'}
+                    </span>
+                </div>
+
+                {/* Horário (Última Caixa) */}
+                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${isDarkMode ? 'bg-[#25262b] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                    <ClockIcon className="w-3.5 h-3.5 text-[#ff6600] opacity-80" />
+                    <span className={`text-[10px] md:text-[11px] font-bold uppercase ${isDarkMode ? 'text-white/80' : 'text-slate-600'}`}>
+                        {getHorarioFixo(aula.turno)}
                     </span>
                 </div>
             </div>
@@ -122,7 +141,6 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         return () => document.removeEventListener('fullscreenchange', handleFS);
     }, []);
 
-    // Detecção automática inicial baseada no horário
     useEffect(() => {
         const detectShift = () => {
             const h = new Date().getHours();
@@ -176,7 +194,6 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         <div className={`min-h-screen w-screen overflow-x-hidden flex flex-col transition-colors duration-1000 ${isDarkMode ? 'bg-[#0a0a0f] text-white' : 'bg-slate-50 text-slate-800'}`}>
             <Header onFullscreen={() => document.documentElement.requestFullscreen()} />
             
-            {/* Seletor de Turno - Início da Main */}
             <div className="flex justify-center pt-8 px-4">
                 <div className={`flex p-1.5 rounded-2xl md:rounded-[2rem] gap-2 border ${isDarkMode ? 'bg-[#16171d] border-white/5' : 'bg-white border-slate-200 shadow-lg'}`}>
                     {turnos.map((t) => {
