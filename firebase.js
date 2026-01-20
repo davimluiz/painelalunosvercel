@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
+// Configuração oficial do Firebase fornecida
 const firebaseConfig = {
   apiKey: "AIzaSyAtFpYzDSwbQqxvhj0FZGWXG26Ki_L7BRk",
   authDomain: "painel-de-aulas.firebaseapp.com",
@@ -13,6 +14,7 @@ const firebaseConfig = {
   measurementId: "G-KGQJSYH12H"
 };
 
+// Inicializa o app apenas uma vez
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
