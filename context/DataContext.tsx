@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Aula, Anuncio, DataContextType } from '../types';
+import { Aula, Anuncio, Aluno, DataContextType } from '../types';
 import { db } from '../firebase';
 import { 
   collection, 
@@ -36,25 +36,40 @@ const calcularTurnoPorHorario = (horarioStr: string): string => {
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
+  const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncSource, setSyncSource] = useState<string | null>(null);
 
   useEffect(() => {
+    // Listener para Aulas
     const unsubAulas = onSnapshot(collection(db, 'aulas'), (snapshot) => {
       const aulasData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Aula[];
       setAulas(aulasData);
       setLoading(false);
     });
 
+    // Listener para Anúncios
     const unsubAnuncios = onSnapshot(collection(db, 'anuncios'), (snapshot) => {
       const anunciosData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Anuncio[];
       setAnuncios(anunciosData);
     });
 
+    // Listener para Alunos (Nova Coleção)
+    const unsubAlunos = onSnapshot(collection(db, 'alunos'), (snapshot) => {
+      const alunosData = snapshot.docs.map(doc => ({ 
+        id: doc.id,
+        nome: doc.data().nome || doc.data().aluno || "Aluno sem nome",
+        turma: doc.data().turma || "",
+        status: doc.data().status || "Ativo"
+      })) as Aluno[];
+      setAlunos(alunosData);
+    });
+
     return () => {
       unsubAulas();
       unsubAnuncios();
+      unsubAlunos();
     };
   }, []);
 
@@ -154,7 +169,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <DataContext.Provider value={{ 
-      aulas, anuncios, loading, error, 
+      aulas, anuncios, alunos, loading, error, 
       addAula, updateAulasFromCSV, updateAula, deleteAula, 
       clearAulas, addAnuncio, deleteAnuncio,
       uploadCSV, syncSource

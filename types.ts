@@ -17,9 +17,17 @@ export interface Anuncio {
   src: string;
 }
 
+export interface Aluno {
+  id: string;
+  nome: string;
+  turma?: string;
+  status?: string;
+}
+
 export interface DataContextType {
   aulas: Aula[];
   anuncios: Anuncio[];
+  alunos: Aluno[];
   loading: boolean;
   error: string | null;
   addAula: (aula: Omit<Aula, 'id'>) => void;
