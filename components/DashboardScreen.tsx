@@ -3,7 +3,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { DataContext } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 import useCurrentTime from '../hooks/useCurrentTime';
-import { Aula, Aluno } from '../types';
+import { Aula } from '../types';
 import { BuildingIcon, UsersIcon, UserTieIcon, BookOpenIcon, ClockIcon, SettingsIcon, SunIcon, MoonIcon } from './Icons';
 
 const MaximizeIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -176,7 +176,6 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
     if (!context) return null;
 
     const hasAnuncios = (context.anuncios?.length || 0) > 0;
-    const hasAlunos = (context.alunos?.length || 0) > 0;
 
     const turnos = [
         { id: 'Matutino', icon: SunIcon },
@@ -229,30 +228,12 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                             ))}
                         </div>
                     )}
-
-                    {/* Lista de Alunos Mobile/Tablet ou quando não tem anúncios */}
-                    {hasAlunos && (
-                        <section className="mt-12 lg:hidden">
-                            <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-4 text-[#ff6600]">Alunos Cadastrados</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {context.alunos.map(aluno => (
-                                    <div key={aluno.id} className={`p-4 rounded-xl border flex items-center justify-between ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                        <div className="flex flex-col">
-                                            <span className="text-[11px] font-black uppercase tracking-tight">{aluno.nome}</span>
-                                            <span className="text-[9px] opacity-40 uppercase font-bold">{aluno.turma}</span>
-                                        </div>
-                                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-[#ff6600]/10 text-[#ff6600]">{aluno.status}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
                 </div>
 
-                {/* Coluna Lateral: Anúncios e Alunos (Desktop) */}
-                <div className="hidden lg:flex flex-col gap-8 w-1/3">
-                    {hasAnuncios && (
-                        <aside className="h-[450px] rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative">
+                {/* Coluna Lateral: Apenas Anúncios (Desktop) */}
+                {hasAnuncios && (
+                    <div className="hidden lg:flex flex-col gap-8 w-1/3">
+                        <aside className="flex-1 min-h-[450px] rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative">
                              {context.anuncios.map((ad, idx) => {
                                  const isVisible = idx === (Math.floor(Date.now()/10000) % context.anuncios.length);
                                  return (
@@ -262,30 +243,8 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                                  );
                              })}
                         </aside>
-                    )}
-
-                    {hasAlunos && (
-                        <aside className={`flex-1 rounded-[2rem] p-6 border overflow-hidden flex flex-col ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
-                            <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
-                                <UsersIcon className="w-5 h-5 text-[#ff6600]" />
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Alunos na Unidade</h3>
-                            </div>
-                            <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                                {context.alunos.map(aluno => (
-                                    <div key={aluno.id} className={`p-4 rounded-2xl border transition-all hover:border-[#ff6600]/30 group ${isDarkMode ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="text-[11px] font-black uppercase tracking-tight group-hover:text-[#ff6600] transition-colors">{aluno.nome}</p>
-                                                <p className="text-[9px] opacity-40 uppercase font-bold mt-0.5">{aluno.turma || "Geral"}</p>
-                                            </div>
-                                            <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </aside>
-                    )}
-                </div>
+                    </div>
+                )}
             </main>
 
             {!isFullscreen && (
