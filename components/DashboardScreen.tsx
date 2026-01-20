@@ -19,6 +19,8 @@ const normalizeTurno = (t: string | undefined) => {
     return t.toLowerCase().trim();
 };
 
+const isDirectVideo = (url: string) => /\.(mp4|webm|ogg)$/i.test(url);
+
 const Header: React.FC<{ onFullscreen: () => void }> = ({ onFullscreen }) => {
     const { formattedDate, formattedTime } = useCurrentTime();
     const { isDarkMode } = useTheme();
@@ -127,6 +129,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
     const [currentShift, setCurrentShift] = useState<string>('Matutino');
     const [page, setPage] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [adIndex, setAdIndex] = useState(0);
     
     useEffect(() => {
         const handleFS = () => setIsFullscreen(!!document.fullscreenElement);
@@ -161,6 +164,15 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
             setPage(0);
         }
     }, [context?.aulas, context?.loading, currentShift]);
+
+    useEffect(() => {
+        if (context?.anuncios && context.anuncios.length > 0) {
+            const timer = setInterval(() => {
+                setAdIndex(prev => (prev + 1) % context.anuncios.length);
+            }, 15000);
+            return () => clearInterval(timer);
+        }
+    }, [context?.anuncios]);
 
     const itemsPerPage = 8;
 
@@ -230,18 +242,40 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                     )}
                 </div>
 
-                {/* Coluna Lateral: Apenas Anúncios (Desktop) */}
+                {/* Coluna Lateral: Anúncios (Desktop) */}
                 {hasAnuncios && (
                     <div className="hidden lg:flex flex-col gap-8 w-1/3">
-                        <aside className="flex-1 min-h-[450px] rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl bg-black/40 relative">
+                        <aside className="flex-1 min-h-[450px] rounded-[3rem] overflow-hidden border border-white/5 shadow-2xl bg-black relative">
                              {context.anuncios.map((ad, idx) => {
-                                 const isVisible = idx === (Math.floor(Date.now()/10000) % context.anuncios.length);
+                                 const isVisible = idx === adIndex;
                                  return (
-                                    <div key={ad.id} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-                                        {ad.type === 'image' ? <img src={ad.src} className="w-full h-full object-cover" /> : <video src={ad.src} autoPlay loop muted className="w-full h-full object-cover" />}
+                                    <div key={ad.id} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${isVisible ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                                        {ad.type === 'image' ? (
+                                            <img src={ad.src} className="w-full h-full object-cover" alt="Anúncio" />
+                                        ) : isDirectVideo(ad.src) ? (
+                                            <video 
+                                                src={ad.src} 
+                                                autoPlay 
+                                                muted 
+                                                loop 
+                                                playsInline 
+                                                className="w-full h-full object-cover" 
+                                            />
+                                        ) : (
+                                            <iframe 
+                                                src={ad.src} 
+                                                className="w-full h-full border-0" 
+                                                allow="autoplay; encrypted-media; fullscreen"
+                                            ></iframe>
+                                        )}
                                     </div>
                                  );
                              })}
+                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                                {context.anuncios.map((_, i) => (
+                                    <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === adIndex ? 'w-6 bg-[#ff6600]' : 'w-1 bg-white/20'}`} />
+                                ))}
+                             </div>
                         </aside>
                     </div>
                 )}

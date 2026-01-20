@@ -8,13 +8,21 @@ const PencilIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
 );
 
-const sanitizeDriveUrl = (url: string) => {
+const sanitizeVideoUrl = (url: string) => {
+    // Google Drive
     if (url.includes('drive.google.com')) {
         const id = url.match(/\/d\/(.+?)\//)?.[1] || url.match(/id=(.+?)(&|$)/)?.[1];
-        if (id) return `https://drive.google.com/uc?id=${id}`;
+        if (id) return `https://drive.google.com/file/d/${id}/preview?autoplay=1`;
+    }
+    // YouTube
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        const id = url.match(/(?:v=|\/embed\/|\/watch\?v=|\/\d+\/|\/vi\/|be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+        if (id) return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&rel=0`;
     }
     return url;
 };
+
+const isDirectVideo = (url: string) => /\.(mp4|webm|ogg)$/i.test(url);
 
 const EditModal: React.FC<{ aula: Aula; onSave: (d: Partial<Aula>) => void; onClose: () => void }> = ({ aula, onSave, onClose }) => {
     const [formData, setFormData] = useState<Partial<Aula>>(aula);
@@ -71,10 +79,13 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const handleAddAd = () => {
         const input = document.getElementById('ad-url') as HTMLInputElement;
         if (input.value) {
-            const sanitized = sanitizeDriveUrl(input.value);
+            const url = input.value.trim();
+            const isVid = url.includes('youtube') || url.includes('youtu.be') || url.includes('drive.google.com') || isDirectVideo(url);
+            const sanitized = isVid ? sanitizeVideoUrl(url) : url;
+            
             context.addAnuncio({ 
                 src: sanitized, 
-                type: (sanitized.toLowerCase().endsWith('.mp4') || sanitized.includes('video')) ? 'video' : 'image' 
+                type: isVid ? 'video' : 'image' 
             });
             input.value = '';
         }
@@ -119,26 +130,42 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         <CameraIcon className="w-6 h-6 text-[#ff6600]" />
                         <h2 className="text-sm font-black uppercase tracking-widest">Mídia Rotativa</h2>
                     </div>
-                    <div className="flex gap-2 mb-6">
-                        <input id="ad-url" placeholder="Link do Google Drive" className="flex-1 bg-black/60 border border-white/10 p-4 rounded-2xl text-[10px] outline-none focus:border-[#ff6600] transition-all" />
-                        <button onClick={handleAddAd} className="bg-[#ff6600] text-white px-6 rounded-2xl font-black hover:bg-white hover:text-black transition-all shadow-lg">+</button>
+                    <div className="flex flex-col gap-3 mb-6">
+                        <input id="ad-url" placeholder="Link (YouTube, Drive ou Imagem)" className="flex-1 bg-black/60 border border-white/10 p-4 rounded-2xl text-[10px] outline-none focus:border-[#ff6600] transition-all" />
+                        <button onClick={handleAddAd} className="bg-[#ff6600] text-white py-4 rounded-2xl font-black hover:bg-white hover:text-black transition-all shadow-lg uppercase text-[10px] tracking-widest">Adicionar Mídia</button>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                         {context.anuncios.map(ad => (
-                            <div key={ad.id} className="relative group aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-inner">
+                            <div key={ad.id} className="relative group aspect-video rounded-3xl overflow-hidden bg-black border border-white/5 shadow-inner">
                                 {ad.type === 'image' ? (
-                                    <img src={ad.src} className="w-full h-full object-cover opacity-40 group-hover:opacity-100 transition-all duration-500" />
+                                    <img src={ad.src} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500" />
+                                ) : isDirectVideo(ad.src) ? (
+                                    <video 
+                                        src={ad.src} 
+                                        autoPlay 
+                                        muted 
+                                        loop 
+                                        playsInline 
+                                        className="w-full h-full object-cover pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity" 
+                                    />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[8px] font-black text-[#ff6600] tracking-widest uppercase">Vídeo</div>
+                                    <iframe 
+                                        src={ad.src} 
+                                        className="w-full h-full border-0 pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity" 
+                                        allow="autoplay; encrypted-media"
+                                    ></iframe>
                                 )}
-                                <button onClick={() => context.deleteAnuncio(ad.id)} className="absolute inset-0 flex items-center justify-center bg-red-600/80 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                                    <TrashIcon className="w-5 h-5" />
+                                <div className="absolute top-3 left-3 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[8px] font-black uppercase tracking-widest border border-white/10">
+                                    {ad.type}
+                                </div>
+                                <button onClick={() => context.deleteAnuncio(ad.id)} className="absolute inset-0 flex items-center justify-center bg-red-600/80 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm z-10">
+                                    <TrashIcon className="w-6 h-6 text-white" />
                                 </button>
                             </div>
                         ))}
                     </div>
                     {context.anuncios.length === 0 && (
-                        <div className="py-8 text-center text-[10px] font-bold text-white/20 uppercase tracking-widest border-2 border-dashed border-white/5 rounded-3xl">Sem anúncios ativos</div>
+                        <div className="py-12 text-center text-[10px] font-bold text-white/20 uppercase tracking-widest border-2 border-dashed border-white/5 rounded-[2.5rem]">Sem anúncios ativos</div>
                     )}
                 </div>
 
