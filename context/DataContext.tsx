@@ -1,11 +1,23 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Aula, Anuncio, DataContextType } from '../types';
+import { db } from '../firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  writeBatch,
+  query,
+  getDocs
+} from 'firebase/firestore';
 
 declare const XLSX: any;
 
 export interface ExtendedDataContextType extends DataContextType {
-  syncFromRepository: () => Promise<void>;
+  uploadCSV: (file: File) => Promise<void>;
   syncSource: string | null;
 }
 
@@ -23,14 +35,31 @@ const calcularTurnoPorHorario = (horarioStr: string): string => {
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [aulas, setAulas] = useState<Aula[]>([]);
-  const [anuncios, setAnunciosState] = useState<Anuncio[]>([]);
+  const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncSource, setSyncSource] = useState<string | null>(null);
 
+  useEffect(() => {
+    const unsubAulas = onSnapshot(collection(db, 'aulas'), (snapshot) => {
+      const aulasData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Aula[];
+      setAulas(aulasData);
+      setLoading(false);
+    });
+
+    const unsubAnuncios = onSnapshot(collection(db, 'anuncios'), (snapshot) => {
+      const anunciosData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Anuncio[];
+      setAnuncios(anunciosData);
+    });
+
+    return () => {
+      unsubAulas();
+      unsubAnuncios();
+    };
+  }, []);
+
   const processCSVData = (jsonData: any[][]) => {
     if (!jsonData || jsonData.length < 2) return [];
-    
     const headers = jsonData[0].map(h => String(h || '').toLowerCase().trim().replace(/^["']|["']$/g, ''));
     
     const idx = {
@@ -39,134 +68,88 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       turma: headers.findIndex(h => h.includes('turma') || h.includes('tipo')),
       instrutor: headers.findIndex(h => h.includes('instrutor')),
       uc: headers.findIndex(h => h.includes('unidade') || h.includes('curricular') || h.includes('solicitante')),
-      inicio: headers.findIndex(h => h.includes('inicio') || h.includes('início')),
+      inicio: headers.findIndex(h => h.includes('inicio')),
       fim: headers.findIndex(h => h.includes('fim'))
     };
 
-    if (idx.sala === -1) idx.sala = headers.findIndex(h => h.includes('justificativa'));
-
-    if (idx.data === -1 || idx.inicio === -1) return [];
-
     return jsonData.slice(1).map(v => {
       const hInicio = String(v[idx.inicio] || '').trim();
-      let salaDetectada = String(v[idx.sala] || 'Ambiente não definido').replace(/^["']|["']$/g, '').trim();
-      let instrutorDetectado = String(v[idx.instrutor] || '').trim();
-
-      if (!salaDetectada.toUpperCase().startsWith('VTRIA') && instrutorDetectado.toUpperCase().startsWith('VTRIA')) {
-          const temp = salaDetectada;
-          salaDetectada = instrutorDetectado;
-          instrutorDetectado = temp;
-      }
-
-      let ucLimpa = String(v[idx.uc] || '')
-        .replace(/\s*[\(\[].*?ch.*?[\)\]]/gi, '')
-        .replace(/\s+ch[:\s].*?(\s|$)/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
       return {
-        id: Math.random().toString(36).substr(2, 9),
         data: String(v[idx.data] || '').trim(),
-        sala: salaDetectada,
+        sala: String(v[idx.sala] || 'Ambiente').trim(),
         turma: String(v[idx.turma] || '').trim(),
-        instrutor: instrutorDetectado,
-        unidade_curricular: ucLimpa,
+        instrutor: String(v[idx.instrutor] || '').trim(),
+        unidade_curricular: String(v[idx.uc] || '').trim(),
         inicio: hInicio,
         fim: String(v[idx.fim] || '').trim(),
         turno: calcularTurnoPorHorario(hInicio)
       };
-    }).filter(a => a.data && a.inicio && (a.data.includes('/') || a.data.includes('-')));
+    }).filter(a => a.data && a.inicio);
   };
 
-  const syncFromRepository = useCallback(async () => {
+  const uploadCSV = async (file: File) => {
     setLoading(true);
     setError(null);
     try {
-      const fileName = 'aulas.csv';
-      const res = await fetch(`/csv/${fileName}?t=${Date.now()}`);
-      if (!res.ok) throw new Error("Arquivo não encontrado.");
-      const text = await res.text();
-      const workbook = XLSX.read(text, { type: 'string' });
-      const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
       const processed = processCSVData(jsonData as any[][]);
-      if (processed.length > 0) {
-        setAulas(processed);
-        setSyncSource(fileName);
-        localStorage.setItem('senai_aulas_v2', JSON.stringify(processed));
+      
+      if (processed.length === 0) {
+        throw new Error("Nenhuma aula válida encontrada no arquivo.");
       }
+
+      const batch = writeBatch(db);
+      const currentDocs = await getDocs(collection(db, 'aulas'));
+      currentDocs.forEach((d) => batch.delete(d.ref));
+      
+      processed.forEach((aula) => {
+        const newDocRef = doc(collection(db, 'aulas'));
+        batch.set(newDocRef, aula);
+      });
+      
+      await batch.commit();
+      setSyncSource(file.name);
+      alert(`${processed.length} aulas sincronizadas com sucesso!`);
     } catch (e: any) {
       setError(e.message);
-      const saved = localStorage.getItem('senai_aulas_v2');
-      if (saved) setAulas(JSON.parse(saved));
+      alert("Erro ao processar arquivo: " + e.message);
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    const savedAnuncios = localStorage.getItem('senai_anuncios_v2');
-    if (savedAnuncios) setAnunciosState(JSON.parse(savedAnuncios));
-    
-    const savedAulas = localStorage.getItem('senai_aulas_v2');
-    if (savedAulas) {
-      setAulas(JSON.parse(savedAulas));
-      setLoading(false);
-    } else {
-      syncFromRepository();
-    }
-  }, [syncFromRepository]);
-
-  const addAula = (aula: Omit<Aula, 'id'>) => {
-    setAulas(prev => {
-      const newAulas = [...prev, { ...aula, id: Date.now().toString() }];
-      localStorage.setItem('senai_aulas_v2', JSON.stringify(newAulas));
-      return newAulas;
-    });
   };
 
-  const updateAulasFromCSV = (data: Omit<Aula, 'id'>[]) => {
-    const novas = data.map(d => ({ ...d, id: Math.random().toString(36).substr(2, 9) }));
-    setAulas(novas);
-    localStorage.setItem('senai_aulas_v2', JSON.stringify(novas));
-  };
-
-  const updateAula = async (id: string, d: Partial<Aula>) => {
-    setAulas(prev => {
-      const newAulas = prev.map(a => a.id === id ? { ...a, ...d } : a);
-      localStorage.setItem('senai_aulas_v2', JSON.stringify(newAulas));
-      return newAulas;
-    });
+  const updateAula = async (id: string, aula: Partial<Aula>) => {
+    try {
+      await updateDoc(doc(db, 'aulas', id), aula);
+    } catch (e) { console.error(e); }
   };
 
   const deleteAula = async (id: string) => {
-    setAulas(prev => {
-      const newAulas = prev.filter(a => a.id !== id);
-      localStorage.setItem('senai_aulas_v2', JSON.stringify(newAulas));
-      return newAulas;
-    });
+    try { await deleteDoc(doc(db, 'aulas', id)); } catch (e) { console.error(e); }
   };
 
-  const clearAulas = () => { 
-    if(confirm("Apagar dados locais?")) { 
-      setAulas([]); 
-      localStorage.removeItem('senai_aulas_v2'); 
-    } 
+  const addAnuncio = async (anuncio: Omit<Anuncio, 'id'>) => {
+    try { await addDoc(collection(db, 'anuncios'), anuncio); } catch (e) { console.error(e); }
   };
 
-  const addAnuncio = (n: Omit<Anuncio, 'id'>) => {
-    setAnunciosState(prev => {
-      const newAnuncios = [...prev, { ...n, id: Date.now().toString() }];
-      localStorage.setItem('senai_anuncios_v2', JSON.stringify(newAnuncios));
-      return newAnuncios;
-    });
+  const deleteAnuncio = async (id: string) => {
+    try { await deleteDoc(doc(db, 'anuncios', id)); } catch (e) { console.error(e); }
   };
 
-  const deleteAnuncio = (id: string) => {
-    setAnunciosState(prev => {
-      const newAnuncios = prev.filter(a => a.id !== id);
-      localStorage.setItem('senai_anuncios_v2', JSON.stringify(newAnuncios));
-      return newAnuncios;
-    });
+  const addAula = async (aula: Omit<Aula, 'id'>) => { await addDoc(collection(db, 'aulas'), aula); };
+  const updateAulasFromCSV = () => {};
+  const clearAulas = async () => {
+    if(confirm("Limpar todas as aulas?")) {
+      const batch = writeBatch(db);
+      const docs = await getDocs(collection(db, 'aulas'));
+      docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
   };
 
   return (
@@ -174,8 +157,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       aulas, anuncios, loading, error, 
       addAula, updateAulasFromCSV, updateAula, deleteAula, 
       clearAulas, addAnuncio, deleteAnuncio,
-      syncFromRepository,
-      syncSource
+      uploadCSV, syncSource
     }}>
       {children}
     </DataContext.Provider>
