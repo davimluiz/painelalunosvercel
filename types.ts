@@ -9,6 +9,14 @@ export interface Aula {
   inicio: string;
   fim: string;
   turno?: string;
+  // Novos campos solicitados
+  titulo?: string;
+  descricao?: string;
+  videoUrl?: string;
+  materialUrl?: string;
+  ordem?: number;
+  ativa?: boolean;
+  criadaEm?: any;
 }
 
 export interface Anuncio {
@@ -30,7 +38,7 @@ export interface DataContextType {
   alunos: Aluno[];
   loading: boolean;
   error: string | null;
-  addAula: (aula: Omit<Aula, 'id'>) => void;
+  addAula: (aula: Omit<Aula, 'id'>) => Promise<void>;
   updateAulasFromCSV: (data: Omit<Aula, 'id'>[]) => void;
   updateAula: (id: string, aula: Partial<Aula>) => Promise<void>;
   deleteAula: (id: string) => Promise<void>;

@@ -11,7 +11,9 @@ import {
   deleteDoc, 
   writeBatch,
   query,
-  getDocs
+  getDocs,
+  serverTimestamp,
+  orderBy
 } from 'firebase/firestore';
 
 declare const XLSX: any;
@@ -42,7 +44,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [syncSource, setSyncSource] = useState<string | null>(null);
 
   useEffect(() => {
-    // Listener para Aulas
+    // Listener para Aulas ordenadas
+    const qAulas = query(collection(db, 'aulas'), orderBy('ordem', 'asc'));
     const unsubAulas = onSnapshot(collection(db, 'aulas'), (snapshot) => {
       const aulasData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Aula[];
       setAulas(aulasData);
@@ -55,7 +58,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAnuncios(anunciosData);
     });
 
-    // Listener para Alunos (Nova Coleção)
+    // Listener para Alunos
     const unsubAlunos = onSnapshot(collection(db, 'alunos'), (snapshot) => {
       const alunosData = snapshot.docs.map(doc => ({ 
         id: doc.id,
@@ -87,17 +90,26 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fim: headers.findIndex(h => h.includes('fim'))
     };
 
-    return jsonData.slice(1).map(v => {
+    return jsonData.slice(1).map((v, i) => {
       const hInicio = String(v[idx.inicio] || '').trim();
+      const turma = String(v[idx.turma] || '').trim();
+      const uc = String(v[idx.uc] || '').trim();
+      
       return {
         data: String(v[idx.data] || '').trim(),
         sala: String(v[idx.sala] || 'Ambiente').trim(),
-        turma: String(v[idx.turma] || '').trim(),
+        turma: turma,
         instrutor: String(v[idx.instrutor] || '').trim(),
-        unidade_curricular: String(v[idx.uc] || '').trim(),
+        unidade_curricular: uc,
         inicio: hInicio,
         fim: String(v[idx.fim] || '').trim(),
-        turno: calcularTurnoPorHorario(hInicio)
+        turno: calcularTurnoPorHorario(hInicio),
+        // Novos metadados
+        titulo: turma,
+        descricao: uc,
+        ativa: true,
+        ordem: i,
+        criadaEm: new Date()
       };
     }).filter(a => a.data && a.inicio);
   };
@@ -156,8 +168,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try { await deleteDoc(doc(db, 'anuncios', id)); } catch (e) { console.error(e); }
   };
 
-  const addAula = async (aula: Omit<Aula, 'id'>) => { await addDoc(collection(db, 'aulas'), aula); };
+  const addAula = async (aulaData: Omit<Aula, 'id'>) => { 
+    try {
+      const newAula = {
+        ...aulaData,
+        titulo: aulaData.turma,
+        descricao: aulaData.unidade_curricular,
+        ativa: true,
+        criadaEm: serverTimestamp(),
+        ordem: aulas.length + 1
+      };
+      await addDoc(collection(db, 'aulas'), newAula); 
+    } catch (e) {
+      console.error("Erro ao adicionar aula:", e);
+      alert("Erro ao salvar no banco.");
+    }
+  };
+
   const updateAulasFromCSV = () => {};
+
   const clearAulas = async () => {
     if(confirm("Limpar todas as aulas?")) {
       const batch = writeBatch(db);

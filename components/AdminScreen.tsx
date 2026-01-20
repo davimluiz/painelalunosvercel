@@ -30,6 +30,16 @@ const sanitizeVideoUrl = (url: string) => {
 
 const isDirectVideo = (url: string) => /\.(mp4|webm|ogg)$/i.test(url);
 
+const calcularTurnoPorHorario = (horarioStr: string): string => {
+    if (!horarioStr || !horarioStr.includes(':')) return 'Matutino';
+    const [horas, minutos] = horarioStr.split(':').map(Number);
+    const totalMinutos = (horas * 60) + (minutos || 0);
+    if (totalMinutos >= 360 && totalMinutos <= 690) return 'Matutino';
+    if (totalMinutos >= 691 && totalMinutos <= 1050) return 'Vespertino';
+    if (totalMinutos >= 1051 && totalMinutos <= 1320) return 'Noturno';
+    return totalMinutos < 360 ? 'Matutino' : 'Noturno';
+};
+
 const EditModal: React.FC<{ aula: Aula; onSave: (d: Partial<Aula>) => void; onClose: () => void }> = ({ aula, onSave, onClose }) => {
     const [formData, setFormData] = useState<Partial<Aula>>(aula);
     return (
@@ -42,19 +52,22 @@ const EditModal: React.FC<{ aula: Aula; onSave: (d: Partial<Aula>) => void; onCl
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-all active:scale-90"><XIcon className="w-5 h-5" /></button>
                 </div>
-                <form onSubmit={e => { e.preventDefault(); onSave(formData); }} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <form onSubmit={e => { e.preventDefault(); onSave(formData); }} className="grid grid-cols-1 md:grid-cols-2 gap-5 overflow-y-auto max-h-[70vh] pr-2">
                     {[
                         { label: 'Turma', key: 'turma' },
                         { label: 'Ambiente / Sala', key: 'sala' },
                         { label: 'Instrutor', key: 'instrutor' },
                         { label: 'Unidade Curricular', key: 'unidade_curricular' },
-                        { label: 'Início', key: 'inicio' },
-                        { label: 'Fim', key: 'fim' }
+                        { label: 'Início (Ex: 08:00)', key: 'inicio' },
+                        { label: 'Fim (Ex: 12:00)', key: 'fim' },
+                        { label: 'Data (Ex: DD/MM/YYYY)', key: 'data' },
+                        { label: 'Vídeo URL (Opicional)', key: 'videoUrl' },
+                        { label: 'Material URL (Opicional)', key: 'materialUrl' }
                     ].map(field => (
                         <div key={field.key} className="flex flex-col gap-1.5">
                             <label className="text-[10px] font-black uppercase opacity-40 tracking-widest px-1">{field.label}</label>
                             <input 
-                                value={(formData as any)[field.key]} 
+                                value={(formData as any)[field.key] || ''} 
                                 onChange={e => setFormData({ ...formData, [field.key]: e.target.value })} 
                                 className="bg-black/40 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-[#ff6600] transition-colors"
                             />
@@ -69,9 +82,75 @@ const EditModal: React.FC<{ aula: Aula; onSave: (d: Partial<Aula>) => void; onCl
     );
 };
 
+const AddModal: React.FC<{ onSave: (d: Omit<Aula, 'id'>) => void; onClose: () => void }> = ({ onSave, onClose }) => {
+    const [formData, setFormData] = useState<Omit<Aula, 'id'>>({
+        data: new Date().toLocaleDateString('pt-BR'),
+        sala: '',
+        turma: '',
+        instrutor: '',
+        unidade_curricular: '',
+        inicio: '08:00',
+        fim: '12:00',
+        turno: 'Matutino',
+        videoUrl: '',
+        materialUrl: ''
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const finalData = {
+            ...formData,
+            turno: calcularTurnoPorHorario(formData.inicio)
+        };
+        onSave(finalData);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+            <div className="bg-[#1a1b1e] border border-white/10 w-full max-w-2xl rounded-[2.5rem] p-8 shadow-2xl overflow-hidden relative">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 className="text-xl font-black uppercase tracking-widest text-white">Adicionar Nova Aula</h2>
+                        <p className="text-[10px] text-[#ff6600] font-bold uppercase tracking-wider opacity-60">Inserção Manual</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-all active:scale-90"><XIcon className="w-5 h-5" /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5 overflow-y-auto max-h-[70vh] pr-2">
+                    {[
+                        { label: 'Data', key: 'data', placeholder: 'DD/MM/YYYY' },
+                        { label: 'Sala / Ambiente', key: 'sala', placeholder: 'Ex: LAB 101' },
+                        { label: 'Turma', key: 'turma', placeholder: 'Ex: Técnico ADS' },
+                        { label: 'Instrutor', key: 'instrutor', placeholder: 'Nome do Instrutor' },
+                        { label: 'Unidade Curricular', key: 'unidade_curricular', placeholder: 'Nome da Matéria' },
+                        { label: 'Horário Início', key: 'inicio', placeholder: '08:00' },
+                        { label: 'Horário Fim', key: 'fim', placeholder: '12:00' },
+                        { label: 'Vídeo URL', key: 'videoUrl', placeholder: 'https://youtube.com/...' },
+                        { label: 'Material URL', key: 'materialUrl', placeholder: 'https://link-do-material.com' }
+                    ].map(field => (
+                        <div key={field.key} className="flex flex-col gap-1.5">
+                            <label className="text-[10px] font-black uppercase opacity-40 tracking-widest px-1">{field.label}</label>
+                            <input 
+                                required={field.key !== 'videoUrl' && field.key !== 'materialUrl'}
+                                placeholder={field.placeholder}
+                                value={(formData as any)[field.key]} 
+                                onChange={e => setFormData({ ...formData, [field.key]: e.target.value })} 
+                                className="bg-black/40 border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-[#ff6600] transition-colors"
+                            />
+                        </div>
+                    ))}
+                    <div className="md:col-span-2 mt-6 flex gap-3">
+                        <button type="submit" className="flex-1 bg-[#ff6600] text-white py-5 rounded-2xl font-black uppercase text-xs hover:bg-white hover:text-black transition-all shadow-xl active:scale-95">Salvar Registro</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     const context = useContext(DataContext) as ExtendedDataContextType;
     const [editingAula, setEditingAula] = useState<Aula | null>(null);
+    const [addingAula, setAddingAula] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Estados de Busca e Filtro
@@ -126,6 +205,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     return (
         <div className="min-h-screen bg-[#050508] text-white p-4 md:p-10">
             {editingAula && <EditModal aula={editingAula} onClose={() => setEditingAula(null)} onSave={d => { context.updateAula(editingAula.id, d); setEditingAula(null); }} />}
+            {addingAula && <AddModal onClose={() => setAddingAula(false)} onSave={d => { context.addAula(d); setAddingAula(false); }} />}
             
             <header className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
                 <div>
@@ -137,6 +217,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 </div>
                 <div className="flex flex-wrap justify-center gap-4">
                     <input type="file" accept=".csv,.xlsx,.xls" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                    
                     <button 
                         onClick={() => fileInputRef.current?.click()} 
                         disabled={context.loading}
@@ -144,6 +225,12 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     >
                         <UploadCloudIcon className={`w-5 h-5 ${context.loading ? 'loading-pulse' : ''}`} /> 
                         {context.loading ? 'Processando Arquivo...' : 'Upload Novo CSV'}
+                    </button>
+                    <button 
+                        onClick={() => setAddingAula(true)}
+                        className="bg-[#ff6600] text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center gap-3 hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95"
+                    >
+                        <PlusCircleIcon className="w-5 h-5" /> Adicionar nova aula
                     </button>
                     <button 
                         onClick={() => context.clearAulas()} 
