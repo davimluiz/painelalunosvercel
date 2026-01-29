@@ -125,11 +125,10 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
     const context = useContext(DataContext);
     const { isDarkMode, toggleTheme } = useTheme();
     const [filteredAulas, setFilteredAulas] = useState<Aula[]>([]);
-    const [visibleAulas, setVisibleAulas] = useState<Aula[]>([]);
     const [currentShift, setCurrentShift] = useState<string>('Matutino');
-    const [page, setPage] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [adIndex, setAdIndex] = useState(0);
+    const [searchTurma, setSearchTurma] = useState('');
     
     useEffect(() => {
         const handleFS = () => setIsFullscreen(!!document.fullscreenElement);
@@ -157,13 +156,16 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
 
             const filtered = context.aulas.filter(a => {
                 const aulaData = a.data.trim();
-                return aulaData === todayStr && normalizeTurno(a.turno) === normalizeTurno(currentShift);
+                const matchesDateAndShift = aulaData === todayStr && normalizeTurno(a.turno) === normalizeTurno(currentShift);
+                if (!matchesDateAndShift) return false;
+
+                const matchesSearch = !searchTurma || a.turma.toLowerCase().includes(searchTurma.toLowerCase());
+                return matchesSearch;
             });
             
             setFilteredAulas(filtered);
-            setPage(0);
         }
-    }, [context?.aulas, context?.loading, currentShift]);
+    }, [context?.aulas, context?.loading, currentShift, searchTurma]);
 
     useEffect(() => {
         if (context?.anuncios && context.anuncios.length > 0) {
@@ -174,19 +176,9 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         }
     }, [context?.anuncios]);
 
-    const itemsPerPage = 8;
-
-    useEffect(() => {
-        const total = Math.ceil(filteredAulas.length / itemsPerPage);
-        setVisibleAulas(filteredAulas.slice(page * itemsPerPage, (page + 1) * itemsPerPage));
-        if (total > 1) {
-            const timer = setInterval(() => setPage(p => (p + 1) % total), 15000);
-            return () => clearInterval(timer);
-        }
-    }, [filteredAulas, page]);
-
     if (!context) return null;
 
+    const displayAulas = filteredAulas.slice(0, 30);
     const hasAnuncios = (context.anuncios?.length || 0) > 0;
 
     const turnos = [
@@ -199,7 +191,7 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
         <div className={`min-h-screen w-screen overflow-x-hidden flex flex-col transition-colors duration-1000 ${isDarkMode ? 'bg-[#0a0a0f] text-white' : 'bg-slate-50 text-slate-800'}`}>
             <Header onFullscreen={() => document.documentElement.requestFullscreen()} />
             
-            <div className="flex justify-center pt-8 px-4">
+            <div className="flex flex-col items-center pt-8 px-4">
                 <div className={`flex p-1.5 rounded-2xl md:rounded-[2rem] gap-2 border ${isDarkMode ? 'bg-[#16171d] border-white/5' : 'bg-white border-slate-200 shadow-lg'}`}>
                     {turnos.map((t) => {
                         const Icon = t.icon;
@@ -220,24 +212,26 @@ const DashboardScreen: React.FC<{ onAdminClick: () => void }> = ({ onAdminClick 
                         );
                     })}
                 </div>
+                <div className="w-full max-w-md px-4 md:hidden mt-6">
+                    <input
+                        type="text"
+                        placeholder="Buscar por sua turma..."
+                        value={searchTurma}
+                        onChange={(e) => setSearchTurma(e.target.value)}
+                        className={`w-full p-4 rounded-2xl border text-sm transition-colors ${isDarkMode ? 'bg-[#16171d] border-white/10 placeholder-white/30 focus:border-orange-500 outline-none' : 'bg-white border-slate-200 placeholder-slate-400 focus:border-orange-500 outline-none'}`}
+                    />
+                </div>
             </div>
 
             <main className="flex-1 p-4 md:p-8 flex flex-col lg:flex-row gap-8">
                 <div className={`flex-1 flex flex-col transition-all duration-500 ${hasAnuncios ? 'lg:w-2/3' : 'w-full'}`}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6 auto-rows-min">
-                        {visibleAulas.map((a, idx) => <ClassCard key={a.id} aula={a} index={idx} />)}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 auto-rows-min">
+                        {displayAulas.map((a, idx) => <ClassCard key={a.id} aula={a} index={idx} />)}
                     </div>
                     {filteredAulas.length === 0 && (
                         <div className="flex-1 flex items-center justify-center opacity-10 flex-col gap-6 text-center py-20">
                             <ClockIcon className="w-16 h-16 md:w-24 md:h-24 stroke-[1px]" />
                             <p className="text-xl font-black uppercase tracking-widest">Sem atividades agendadas para o turno {currentShift}</p>
-                        </div>
-                    )}
-                    {filteredAulas.length > itemsPerPage && (
-                        <div className="mt-8 flex justify-center gap-3 pb-4">
-                            {Array.from({ length: Math.ceil(filteredAulas.length / itemsPerPage) }).map((_, i) => (
-                                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === page ? 'w-10 md:w-12 bg-[#ff6600]' : 'w-2 bg-white/10'}`} />
-                            ))}
                         </div>
                     )}
                 </div>
