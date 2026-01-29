@@ -130,16 +130,49 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error("Nenhuma aula válida encontrada no arquivo.");
       }
 
-      const batch = writeBatch(db);
+      const CHUNK_SIZE = 490; // Limite do Firestore é 500 operações por lote
+
+      // 1. Excluir todos os documentos existentes em lotes
       const currentDocs = await getDocs(collection(db, 'aulas'));
-      currentDocs.forEach((d) => batch.delete(d.ref));
+      const deletePromises: Promise<void>[] = [];
+      let deleteBatch = writeBatch(db);
+      let deleteCount = 0;
       
+      currentDocs.forEach((d) => {
+          deleteBatch.delete(d.ref);
+          deleteCount++;
+          if (deleteCount === CHUNK_SIZE) {
+              deletePromises.push(deleteBatch.commit());
+              deleteBatch = writeBatch(db);
+              deleteCount = 0;
+          }
+      });
+      if (deleteCount > 0) {
+          deletePromises.push(deleteBatch.commit());
+      }
+      await Promise.all(deletePromises);
+
+
+      // 2. Adicionar novos documentos em lotes
+      const addPromises: Promise<void>[] = [];
+      let addBatch = writeBatch(db);
+      let addCount = 0;
+
       processed.forEach((aula) => {
         const newDocRef = doc(collection(db, 'aulas'));
-        batch.set(newDocRef, aula);
+        addBatch.set(newDocRef, aula);
+        addCount++;
+        if (addCount === CHUNK_SIZE) {
+          addPromises.push(addBatch.commit());
+          addBatch = writeBatch(db);
+          addCount = 0;
+        }
       });
-      
-      await batch.commit();
+      if (addCount > 0) {
+        addPromises.push(addBatch.commit());
+      }
+      await Promise.all(addPromises);
+
       setSyncSource(file.name);
       alert(`${processed.length} aulas sincronizadas com sucesso!`);
     } catch (e: any) {
@@ -189,10 +222,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearAulas = async () => {
     if(confirm("Limpar todas as aulas?")) {
-      const batch = writeBatch(db);
-      const docs = await getDocs(collection(db, 'aulas'));
-      docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
+        const currentDocs = await getDocs(collection(db, 'aulas'));
+        const CHUNK_SIZE = 490;
+        const deletePromises: Promise<void>[] = [];
+        let deleteBatch = writeBatch(db);
+        let deleteCount = 0;
+        
+        currentDocs.forEach((d) => {
+            deleteBatch.delete(d.ref);
+            deleteCount++;
+            if (deleteCount === CHUNK_SIZE) {
+                deletePromises.push(deleteBatch.commit());
+                deleteBatch = writeBatch(db);
+                deleteCount = 0;
+            }
+        });
+        if (deleteCount > 0) {
+            deletePromises.push(deleteBatch.commit());
+        }
+        await Promise.all(deletePromises);
     }
   };
 
