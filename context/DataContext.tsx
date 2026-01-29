@@ -35,6 +35,28 @@ const calcularTurnoPorHorario = (horarioStr: string): string => {
     return totalMinutos < 360 ? 'Matutino' : 'Noturno';
 };
 
+const formatarDataCSV = (valor: any): string => {
+  if (!valor) return '';
+
+  if (typeof valor === 'string' && valor.includes('/')) {
+    return valor.trim();
+  }
+
+  if (typeof valor === 'number') {
+    // Converte o número de série do Excel para data (levando em conta o bug do ano bissexto de 1900)
+    const data = new Date((valor - 25569) * 86400 * 1000);
+    const dia = String(data.getUTCDate()).padStart(2, '0');
+    const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+    const ano = data.getUTCFullYear();
+    
+    if (isNaN(ano) || ano < 1900 || ano > 2100) return String(valor);
+
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  return String(valor).trim();
+};
+
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
@@ -96,7 +118,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const uc = String(v[idx.uc] || '').trim();
       
       return {
-        data: String(v[idx.data] || '').trim(),
+        data: formatarDataCSV(v[idx.data]),
         sala: String(v[idx.sala] || 'Ambiente').trim(),
         turma: turma,
         instrutor: String(v[idx.instrutor] || '').trim(),
