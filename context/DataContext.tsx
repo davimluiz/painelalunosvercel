@@ -44,14 +44,19 @@ const formatarDataCSV = (valor: any): string => {
 
   if (typeof valor === 'number') {
     // Converte o número de série do Excel para data (levando em conta o bug do ano bissexto de 1900)
-    const data = new Date((valor - 25569) * 86400 * 1000);
-    const dia = String(data.getUTCDate()).padStart(2, '0');
-    const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
-    const ano = data.getUTCFullYear();
+    const data = new Date(Math.round((valor - 25569) * 86400 * 1000));
     
-    if (isNaN(ano) || ano < 1900 || ano > 2100) return String(valor);
-
-    return `${dia}/${mes}/${ano}`;
+    if (isNaN(data.getTime())) {
+      return String(valor);
+    }
+    
+    // Usando toLocaleDateString para formatação robusta de data brasileira (DD/MM/YYYY)
+    return data.toLocaleDateString('pt-BR', {
+      timeZone: 'UTC',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   }
 
   return String(valor).trim();
@@ -182,7 +187,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, dateNF: 'dd/mm/yyyy' });
       
       const processed = processCSVData(jsonData as any[][]);
       
