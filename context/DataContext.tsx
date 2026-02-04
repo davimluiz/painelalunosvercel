@@ -38,25 +38,17 @@ const calcularTurnoPorHorario = (horarioStr: string): string => {
 const formatarDataCSV = (valor: any): string => {
   if (!valor) return '';
 
+  // Com raw:false, esperamos principalmente strings.
+  // Esta função agora serve mais como um normalizador.
   if (typeof valor === 'string' && valor.includes('/')) {
     return valor.trim();
   }
 
+  // Fallback para caso um número de série do Excel passe (pouco provável com raw:false)
   if (typeof valor === 'number') {
-    // Converte o número de série do Excel para data (levando em conta o bug do ano bissexto de 1900)
     const data = new Date(Math.round((valor - 25569) * 86400 * 1000));
-    
-    if (isNaN(data.getTime())) {
-      return String(valor);
-    }
-    
-    // Usando toLocaleDateString para formatação robusta de data brasileira (DD/MM/YYYY)
-    return data.toLocaleDateString('pt-BR', {
-      timeZone: 'UTC',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    if (isNaN(data.getTime())) return String(valor);
+    return data.toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
   return String(valor).trim();
@@ -187,9 +179,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      // Usar 'raw: true' para obter os valores brutos (números para datas)
-      // e deixar nossa função 'formatarDataCSV' cuidar da conversão.
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+      // Usar 'raw: false' para obter o texto formatado da célula.
+      // Isso evita conversões automáticas de data e lê o que o usuário vê.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
       
       const processed = processCSVData(jsonData as any[][]);
       

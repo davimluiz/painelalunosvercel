@@ -387,15 +387,15 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                     </div>
                     
                     <div className="overflow-x-auto flex-1">
-                        <table className="w-full text-left text-[11px]">
+                        <table className="w-full text-left text-[11px] table-fixed">
                             <thead className="bg-white/5 text-white/30 uppercase tracking-[0.2em] border-b border-white/5 font-black">
                                 <tr>
-                                    <th className="p-5">Data</th>
-                                    <th className="p-5">Sala / Ambiente</th>
+                                    <th className="p-5 w-[120px]">Data</th>
+                                    <th className="p-5 w-[180px]">Sala / Ambiente</th>
                                     <th className="p-5">Turma</th>
                                     <th className="p-5">Instrutor</th>
-                                    <th className="p-5">Turno</th>
-                                    <th className="p-5 text-right">Controles</th>
+                                    <th className="p-5 w-[120px]">Turno</th>
+                                    <th className="p-5 text-right w-[100px]">Controles</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
@@ -404,7 +404,7 @@ const AdminPanel: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                         <td className="p-5 text-white/40 group-hover:text-white transition-colors">{a.data}</td>
                                         <td className="p-5 font-black text-[#ff6600] uppercase tracking-wider">{a.sala.replace(/^VTRIA-\d+-/i, '')}</td>
                                         <td className="p-5 font-bold uppercase text-white/80">{a.turma}</td>
-                                        <td className="p-5 font-medium text-white/60">{a.instrutor}</td>
+                                        <td className="p-5 font-medium text-white/60 truncate">{a.instrutor}</td>
                                         <td className="p-5 text-white/30 italic">{a.turno}</td>
                                         <td className="p-5 text-right flex justify-end gap-3">
                                             <button onClick={() => setEditingAula(a)} className="p-2.5 text-white/20 hover:text-white hover:bg-white/10 rounded-xl transition-all"><PencilIcon className="w-4 h-4" /></button>
