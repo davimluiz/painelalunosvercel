@@ -187,7 +187,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, dateNF: 'dd/mm/yyyy' });
+      // Usar 'raw: true' para obter os valores brutos (números para datas)
+      // e deixar nossa função 'formatarDataCSV' cuidar da conversão.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
       
       const processed = processCSVData(jsonData as any[][]);
       
