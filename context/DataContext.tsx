@@ -103,38 +103,76 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const headers = jsonData[0].map(h => String(h || '').toLowerCase().trim().replace(/^["']|["']$/g, ''));
     
     const idx = {
-      data: headers.findIndex(h => h.includes('data')),
-      sala: headers.findIndex(h => (h.includes('ambiente') || h.includes('sala')) && !h.includes('instrutor')),
-      turma: headers.findIndex(h => h.includes('turma') || h.includes('tipo')),
-      instrutor: headers.findIndex(h => h.includes('instrutor')),
-      uc: headers.findIndex(h => h.includes('unidade') || h.includes('curricular') || h.includes('solicitante')),
-      inicio: headers.findIndex(h => h.includes('inicio')),
-      fim: headers.findIndex(h => h.includes('fim'))
+        data: headers.findIndex(h => h.includes('data')),
+        sala: headers.findIndex(h => (h.includes('ambiente') || h.includes('sala')) && !h.includes('instrutor')),
+        turma: headers.findIndex(h => h.includes('turma') || h.includes('tipo')),
+        instrutor: headers.findIndex(h => h.includes('instrutor')),
+        uc: headers.findIndex(h => h.includes('unidade') || h.includes('curricular') || h.includes('solicitante')),
+        inicio: headers.findIndex(h => h.includes('inicio')),
+        fim: headers.findIndex(h => h.includes('fim'))
     };
 
-    return jsonData.slice(1).map((v, i) => {
-      const hInicio = String(v[idx.inicio] || '').trim();
-      const turma = String(v[idx.turma] || '').trim();
-      const uc = String(v[idx.uc] || '').trim();
-      
-      return {
-        data: formatarDataCSV(v[idx.data]),
-        sala: String(v[idx.sala] || 'Ambiente').trim(),
-        turma: turma,
-        instrutor: String(v[idx.instrutor] || '').trim(),
-        unidade_curricular: uc,
-        inicio: hInicio,
-        fim: String(v[idx.fim] || '').trim(),
-        turno: calcularTurnoPorHorario(hInicio),
-        // Novos metadados
-        titulo: turma,
-        descricao: uc,
-        ativa: true,
-        ordem: i,
-        criadaEm: new Date()
-      };
-    }).filter(a => a.data && a.inicio);
-  };
+    if (idx.data === -1 || idx.inicio === -1 || idx.turma === -1 || idx.sala === -1 || idx.instrutor === -1) {
+        console.error("Cabeçalho do CSV inválido. Colunas não encontradas:", { headers, idx });
+        throw new Error("O arquivo CSV não possui as colunas esperadas (Data, Ambiente, Turma, Instrutor, Inicio). Verifique o arquivo e tente novamente.");
+    }
+
+    let globalOrder = 0;
+    return jsonData.slice(1).flatMap((v) => {
+        const commonData = {
+            data: formatarDataCSV(v[idx.data]),
+            sala: String(v[idx.sala] || 'Ambiente').trim(),
+            turma: String(v[idx.turma] || '').trim(),
+            instrutor: String(v[idx.instrutor] || '').trim(),
+            unidade_curricular: String(v[idx.uc] || '').trim(),
+        };
+
+        if (!commonData.data || !commonData.turma) {
+            return [];
+        }
+
+        const iniciosStr = String(v[idx.inicio] || '').trim();
+        const finsStr = String(v[idx.fim] || '').trim();
+
+        const inicios = iniciosStr.split(/\s+/).filter(Boolean);
+        const fins = finsStr.split(/\s+/).filter(Boolean);
+
+        if (inicios.length === 0) {
+            return [];
+        }
+        
+        if (inicios.length > 1 && inicios.length === fins.length) {
+            return inicios.map((inicio, i) => {
+                globalOrder++;
+                return {
+                    ...commonData,
+                    inicio: inicio,
+                    fim: fins[i],
+                    turno: calcularTurnoPorHorario(inicio),
+                    titulo: commonData.turma,
+                    descricao: commonData.unidade_curricular,
+                    ativa: true,
+                    ordem: globalOrder - 1,
+                    criadaEm: new Date(),
+                };
+            });
+        }
+        
+        globalOrder++;
+        return [{
+            ...commonData,
+            inicio: inicios[0],
+            fim: fins[0] || '',
+            turno: calcularTurnoPorHorario(inicios[0]),
+            titulo: commonData.turma,
+            descricao: commonData.unidade_curricular,
+            ativa: true,
+            ordem: globalOrder - 1,
+            criadaEm: new Date(),
+        }];
+        
+    }).filter(a => !!a);
+};
 
   const uploadCSV = async (file: File) => {
     setLoading(true);
